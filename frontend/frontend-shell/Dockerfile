@@ -1,56 +1,40 @@
-# Multi-stage build for Frontend Shell
-FROM node:18-alpine AS base
+# Build stage
+FROM node:18-alpine AS builder
 
-# Install dependencies only when needed
-FROM base AS deps
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Copy package files
-COPY package.json package-lock.json* ./
-COPY packages/types/package.json ./packages/types/
-
-# Install dependencies
+COPY package.json package-lock.json ./
 RUN npm ci
 
-# Build stage
-FROM base AS builder
-WORKDIR /app
-
-# Copy source code and dependencies
+# Copy source code
 COPY . .
-COPY --from=deps /app/node_modules ./node_modules
 
 # Build the application
-RUN npm run build --workspace=@gov-platform/types
-RUN npm run build --workspace=@gov-platform/frontend-shell
+RUN npm run build
 
-# Production stage
+# Production stage  
 FROM nginx:alpine AS runner
 
-# Install Node.js for potential server-side features
-RUN apk add --no-cache nodejs npm
-
 # Copy nginx configuration
-COPY apps/frontend-shell/nginx.conf /etc/nginx/nginx.conf
+COPY nginx.conf /etc/nginx/nginx.conf
 
 # Copy built application
-COPY --from=builder /app/apps/frontend-shell/dist /usr/share/nginx/html
+COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Copy environment script
-COPY apps/frontend-shell/env.sh /docker-entrypoint.d/env.sh
-RUN chmod +x /docker-entrypoint.d/env.sh
-
-# Set environment variables
-ENV VITE_API_BASE_URL=http://localhost:8080/api/v1
-ENV VITE_WS_URL=http://localhost:8080
+# Create nginx config for SPA
+RUN echo 'server { \
+    listen 80; \
+    server_name _; \
+    root /usr/share/nginx/html; \
+    index index.html; \
+    location / { \
+        try_files $uri $uri/ /index.html; \
+    } \
+}' > /etc/nginx/conf.d/default.conf
 
 # Expose port
 EXPOSE 80
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-  CMD curl -f http://localhost/health || exit 1
 
 # Start nginx
 CMD ["nginx", "-g", "daemon off;"]

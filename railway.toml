@@ -1,0 +1,7 @@
+[build]
+command = "cd frontend/frontend-shell && npm ci && npm run build"
+
+[deploy]
+startCommand = "cd frontend/frontend-shell && npx serve -s dist -l 3000"
+healthcheckPath = "/"
+healthcheckTimeout = 100

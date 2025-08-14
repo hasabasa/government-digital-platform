@@ -1,0 +1,26 @@
+{
+  "name": "government-digital-platform",
+  "version": "1.0.0",
+  "description": "Government Digital Platform for Kazakhstan",
+  "private": true,
+  "scripts": {
+    "build": "cd frontend/frontend-shell && npm ci && npm run build",
+    "start": "cd frontend/frontend-shell && npx serve -s dist -l $PORT",
+    "dev": "cd frontend/frontend-shell && npm run dev",
+    "install:frontend": "cd frontend/frontend-shell && npm install",
+    "install:backend": "cd backend && npm install"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=9.0.0"
+  },
+  "keywords": [
+    "government",
+    "digital-platform",
+    "kazakhstan",
+    "ecp",
+    "egov-mobile"
+  ],
+  "author": "Government Digital Team",
+  "license": "MIT"
+}
