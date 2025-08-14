@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Выход из системы</title>
+    <style>
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+        }
+        .container {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            max-width: 400px;
+            width: 100%;
+        }
+        h1 {
+            margin: 0 0 20px 0;
+            font-size: 2rem;
+            font-weight: 600;
+        }
+        p {
+            margin: 0 0 30px 0;
+            opacity: 0.9;
+            line-height: 1.6;
+        }
+        .button {
+            background: #2D7DD2;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin: 10px;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .button:hover {
+            background: #1E5FA5;
+            transform: translateY(-2px);
+        }
+        .button.secondary {
+            background: rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+        .button.secondary:hover {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            border-radius: 8px;
+            background: rgba(46, 125, 50, 0.2);
+            border: 1px solid rgba(76, 175, 80, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚪 Выход из системы</h1>
+        <p>Нажмите кнопку ниже, чтобы выйти и очистить данные авторизации</p>
+        
+        <button class="button" onclick="logout()">
+            🔓 Выйти из системы
+        </button>
+        
+        <button class="button secondary" onclick="goToLogin()">
+            🔐 Перейти ко входу
+        </button>
+        
+        <div id="status" style="display: none;"></div>
+    </div>
+
+    <script>
+        function logout() {
+            // Очищаем localStorage
+            localStorage.removeItem('auth-storage');
+            
+            // Очищаем sessionStorage
+            sessionStorage.clear();
+            
+            // Показываем статус
+            const status = document.getElementById('status');
+            status.style.display = 'block';
+            status.innerHTML = '✅ Данные авторизации очищены!';
+            
+            // Перенаправляем через 2 секунды
+            setTimeout(() => {
+                window.location.href = '/';
+            }, 2000);
+        }
+        
+        function goToLogin() {
+            // Очищаем данные
+            localStorage.removeItem('auth-storage');
+            sessionStorage.clear();
+            
+            // Перенаправляем сразу
+            window.location.href = '/';
+        }
+        
+        // Проверяем статус авторизации
+        window.onload = function() {
+            const authData = localStorage.getItem('auth-storage');
+            if (!authData) {
+                const status = document.getElementById('status');
+                status.style.display = 'block';
+                status.innerHTML = 'ℹ️ Вы уже не авторизованы';
+            }
+        };
+    </script>
+</body>
+</html>

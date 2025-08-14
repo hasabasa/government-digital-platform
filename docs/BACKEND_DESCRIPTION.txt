@@ -1,0 +1,1208 @@
+==============================================================================
+                    ОПИСАНИЕ БЭКЕНДА ПЛАТФОРМЫ ГОССЛУЖАЩИХ
+==============================================================================
+
+ОБЩАЯ АРХИТЕКТУРА:
+├── Микросервисная архитектура на Node.js + TypeScript
+├── API Gateway как единая точка входа 
+├── 5 основных микросервисов
+├── 6 инфраструктурных компонентов
+├── Docker контейнеризация
+└── Kubernetes готовность
+
+==============================================================================
+                              МИКРОСЕРВИСЫ
+==============================================================================
+
+1. AUTH SERVICE (порт 3001) - АУТЕНТИФИКАЦИЯ
+──────────────────────────────────────────────────────────────────────────────
+Назначение: Управление аутентификацией через ЭЦП и авторизацией пользователей
+
+Технологии:
+├── Node.js 18 + TypeScript 5.5
+├── Express.js 4.18 (HTTP сервер)
+├── JWT токены (Access + Refresh)
+├── Redis для хранения сессий
+├── Crypto для валидации ЭЦП
+└── Winston для логирования
+
+Структура кода:
+auth-service/
+├── src/
+│   ├── config/
+│   │   └── index.ts              # Конфигурация окружения
+│   ├── controllers/
+│   │   └── auth.controller.ts    # HTTP контроллеры
+│   ├── services/
+│   │   └── auth.service.ts       # Бизнес-логика
+│   ├── middleware/
+│   │   ├── auth.middleware.ts    # Проверка токенов
+│   │   └── validation.middleware.ts # Валидация запросов
+│   ├── routes/
+│   │   ├── auth.routes.ts        # Маршруты аутентификации
+│   │   └── index.ts              # Сборка маршрутов
+│   ├── utils/
+│   │   ├── crypto.ts             # ЭЦП утилиты
+│   │   ├── jwt.ts                # JWT утилиты
+│   │   └── logger.ts             # Логирование
+│   ├── app.ts                    # Express приложение
+│   └── index.ts                  # Точка входа
+├── package.json                  # Зависимости
+├── tsconfig.json                 # TypeScript конфигурация
+└── Dockerfile                    # Docker образ
+
+API эндпоинты:
+├── POST /api/v1/auth/login           # Вход через email/password (legacy)
+├── POST /api/v1/auth/login-ecp       # Вход через ЭЦП
+├── POST /api/v1/auth/egov-mobile/init # Инициализация eGov Mobile сессии
+├── GET  /api/v1/auth/egov-mobile/status/{sessionId} # Статус eGov Mobile сессии
+├── POST /api/v1/auth/egov-mobile/confirm/{sessionId} # Подтверждение из eGov Mobile
+├── POST /api/v1/auth/egov-mobile/cancel/{sessionId} # Отмена eGov Mobile сессии
+├── POST /api/v1/auth/login-egov-mobile # Завершение входа через eGov Mobile
+├── POST /api/v1/auth/refresh         # Обновление токена
+├── POST /api/v1/auth/logout          # Выход из системы
+├── GET  /api/v1/auth/me              # Информация о пользователе
+├── POST /api/v1/auth/verify-signature # Проверка ЭЦП
+└── GET  /api/v1/health               # Проверка здоровья
+
+Особенности реализации:
+├── Множественные методы аутентификации:
+│   ├── ЭЦП через NCALayer (приоритетный)
+│   ├── eGov Mobile с QR кодами и deeplinks
+│   └── Email/password (legacy, для совместимости)
+├── JWT токены с TTL 15 минут для безопасности
+├── Refresh токены с TTL 7 дней
+├── Redis сессии для мгновенного отзыва доступа
+├── eGov Mobile session management с TTL 5 минут
+├── Certificate validation для ЭЦП
+├── Rate limiting против брутфорса (5 попыток в минуту)
+├── Валидация всех входных данных через Zod
+├── Structured логирование всех действий
+└── Graceful shutdown при получении SIGTERM/SIGINT
+
+──────────────────────────────────────────────────────────────────────────────
+
+2. USER SERVICE (порт 3002) - УПРАВЛЕНИЕ ПОЛЬЗОВАТЕЛЯМИ
+──────────────────────────────────────────────────────────────────────────────
+Назначение: Управление профилями пользователей, контактами и поиском
+
+Технологии:
+├── Node.js 18 + TypeScript 5.5
+├── Express.js 4.18 (HTTP сервер)
+├── Drizzle ORM для работы с PostgreSQL
+├── ElasticSearch для поиска пользователей
+├── Redis для кэширования профилей
+├── Axios для межсервисных запросов
+└── Winston для логирования
+
+Структура кода:
+user-service/
+├── src/
+│   ├── config/
+│   │   └── index.ts              # Конфигурация
+│   ├── controllers/
+│   │   └── user.controller.ts    # HTTP контроллеры
+│   ├── services/
+│   │   ├── user.service.ts       # Основная бизнес-логика
+│   │   ├── cache.service.ts      # Кэширование в Redis
+│   │   ├── search.service.ts     # Поиск через ElasticSearch
+│   │   └── contact.service.ts    # Управление контактами
+│   ├── middleware/
+│   │   ├── auth.middleware.ts    # Проверка аутентификации
+│   │   └── validation.middleware.ts # Валидация данных
+│   ├── routes/
+│   │   ├── user.routes.ts        # Маршруты пользователей
+│   │   └── index.ts              # Сборка маршрутов
+│   ├── utils/
+│   │   └── logger.ts             # Логирование
+│   ├── app.ts                    # Express приложение
+│   └── index.ts                  # Точка входа
+├── package.json
+├── tsconfig.json
+└── Dockerfile
+
+API эндпоинты:
+├── GET  /api/v1/users/profile        # Профиль пользователя
+├── PUT  /api/v1/users/profile        # Обновление профиля
+├── GET  /api/v1/users/search         # Поиск пользователей
+├── POST /api/v1/users/contacts       # Добавить в контакты
+├── GET  /api/v1/users/contacts/list  # Список контактов
+├── DELETE /api/v1/users/contacts/{id} # Удалить контакт
+├── GET  /api/v1/users/{id}           # Получить пользователя по ID
+└── GET  /api/v1/health               # Проверка здоровья
+
+База данных (PostgreSQL таблицы):
+├── users                 # Основная таблица пользователей
+│   ├── id (UUID)         # Уникальный идентификатор
+│   ├── email (VARCHAR)   # Email адрес
+│   ├── full_name (VARCHAR) # Полное имя
+│   ├── position (VARCHAR)  # Должность
+│   ├── department (VARCHAR) # Отдел
+│   ├── avatar (VARCHAR)    # URL аватара
+│   ├── role (ENUM)        # Роль: admin, moderator, user
+│   ├── status (ENUM)      # Статус: active, inactive, blocked
+│   ├── digital_signature (TEXT) # ЭЦП
+│   ├── created_at (TIMESTAMP) # Дата создания
+│   └── updated_at (TIMESTAMP) # Дата обновления
+└── user_contacts         # Контакты пользователей
+    ├── id (UUID)         # Уникальный идентификатор
+    ├── user_id (UUID)    # ID пользователя
+    ├── contact_id (UUID) # ID контакта
+    ├── nickname (VARCHAR) # Псевдоним контакта
+    ├── is_favorite (BOOLEAN) # Избранный контакт
+    ├── created_at (TIMESTAMP) # Дата добавления
+    └── updated_at (TIMESTAMP) # Дата обновления
+
+Кэширование в Redis:
+├── user:profile:{userId}     # Кэш профиля пользователя (TTL: 1 час)
+├── user:contacts:{userId}    # Кэш списка контактов (TTL: 30 мин)
+├── user:search:{query}       # Кэш результатов поиска (TTL: 15 мин)
+└── user:permissions:{userId} # Кэш прав доступа (TTL: 1 час)
+
+ElasticSearch индексы:
+└── users_index
+    ├── full_name (text, analyzer: russian)    # Полное имя
+    ├── email (keyword)                        # Email
+    ├── position (text, analyzer: russian)     # Должность
+    ├── department (text, analyzer: russian)   # Отдел
+    ├── status (keyword)                       # Статус
+    └── created_at (date)                      # Дата создания
+
+──────────────────────────────────────────────────────────────────────────────
+
+3. CHAT SERVICE (порт 3003) - ЧАТЫ И СООБЩЕНИЯ
+──────────────────────────────────────────────────────────────────────────────
+Назначение: Real-time чаты, сообщения, WebSocket соединения
+
+Технологии:
+├── Node.js 18 + TypeScript 5.5
+├── Express.js 4.18 (HTTP сервер)
+├── Socket.IO 4.7 (WebSocket)
+├── Drizzle ORM для PostgreSQL
+├── Redis для кэширования и pub/sub
+├── Crypto для E2E шифрования (AES-256-GCM)
+├── RabbitMQ для очередей сообщений
+└── Winston для логирования
+
+Структура кода:
+chat-service/
+├── src/
+│   ├── config/
+│   │   └── index.ts              # Конфигурация
+│   ├── controllers/
+│   │   └── chat.controller.ts    # HTTP контроллеры
+│   ├── services/
+│   │   ├── chat.service.ts       # Основная логика чатов
+│   │   ├── message.service.ts    # Управление сообщениями
+│   │   └── cache.service.ts      # Кэширование
+│   ├── websocket/
+│   │   └── socket.handler.ts     # WebSocket обработчики
+│   ├── middleware/
+│   │   ├── auth.middleware.ts    # Аутентификация
+│   │   └── validation.middleware.ts # Валидация
+│   ├── routes/
+│   │   ├── chat.routes.ts        # HTTP маршруты
+│   │   └── index.ts              # Сборка маршрутов
+│   ├── utils/
+│   │   ├── encryption.ts         # E2E шифрование
+│   │   └── logger.ts             # Логирование
+│   ├── app.ts                    # Express + Socket.IO
+│   └── index.ts                  # Точка входа
+├── package.json
+├── tsconfig.json
+└── Dockerfile
+
+API эндпоинты:
+├── POST /api/v1/chats                # Создать чат
+├── GET  /api/v1/chats/user           # Чаты пользователя
+├── GET  /api/v1/chats/{id}           # Получить чат
+├── PUT  /api/v1/chats/{id}           # Обновить чат
+├── DELETE /api/v1/chats/{id}         # Удалить чат
+├── POST /api/v1/chats/messages       # Отправить сообщение
+├── GET  /api/v1/chats/{id}/messages  # История сообщений
+├── PUT  /api/v1/chats/messages/{id}  # Обновить сообщение
+├── DELETE /api/v1/chats/messages/{id} # Удалить сообщение
+└── GET  /api/v1/health               # Проверка здоровья
+
+WebSocket события:
+├── Клиентские события:
+│   ├── join_chat           # Присоединиться к чату
+│   ├── leave_chat          # Покинуть чат
+│   ├── send_message        # Отправить сообщение
+│   ├── typing_start        # Начать печатать
+│   ├── typing_stop         # Закончить печатать
+│   ├── message_read        # Прочитать сообщение
+│   └── message_delivered   # Доставить сообщение
+└── Серверные события:
+    ├── message:new         # Новое сообщение
+    ├── message:updated     # Сообщение обновлено
+    ├── message:deleted     # Сообщение удалено
+    ├── user:typing         # Пользователь печатает
+    ├── user:stopped_typing # Пользователь перестал печатать
+    ├── chat:updated        # Чат обновлен
+    └── user:online_status  # Статус онлайн
+
+База данных (PostgreSQL таблицы):
+├── chats                    # Чаты
+│   ├── id (UUID)            # Уникальный идентификатор
+│   ├── name (VARCHAR)       # Название чата
+│   ├── type (ENUM)          # Тип: direct, group, channel
+│   ├── is_private (BOOLEAN) # Приватный чат
+│   ├── description (TEXT)   # Описание
+│   ├── avatar (VARCHAR)     # Аватар чата
+│   ├── created_by (UUID)    # Создатель
+│   ├── last_message_id (UUID) # Последнее сообщение
+│   ├── last_message_at (TIMESTAMP) # Время последнего сообщения
+│   ├── created_at (TIMESTAMP) # Дата создания
+│   └── updated_at (TIMESTAMP) # Дата обновления
+├── chat_participants        # Участники чатов
+│   ├── id (UUID)            # Уникальный идентификатор
+│   ├── chat_id (UUID)       # ID чата
+│   ├── user_id (UUID)       # ID пользователя
+│   ├── role (ENUM)          # Роль: admin, moderator, member
+│   ├── joined_at (TIMESTAMP) # Дата присоединения
+│   ├── last_read_at (TIMESTAMP) # Последнее время чтения
+│   └── notification_settings (JSONB) # Настройки уведомлений
+└── messages                 # Сообщения
+    ├── id (UUID)            # Уникальный идентификатор
+    ├── chat_id (UUID)       # ID чата
+    ├── sender_id (UUID)     # ID отправителя
+    ├── reply_to_id (UUID)   # Ответ на сообщение
+    ├── content (TEXT)       # Содержимое сообщения
+    ├── encrypted_content (TEXT) # Зашифрованное содержимое
+    ├── type (ENUM)          # Тип: text, file, image, video, audio
+    ├── file_id (UUID)       # ID файла (если есть)
+    ├── metadata (JSONB)     # Метаданные сообщения
+    ├── status (ENUM)        # Статус: sent, delivered, read
+    ├── is_edited (BOOLEAN)  # Отредактировано
+    ├── is_deleted (BOOLEAN) # Удалено
+    ├── created_at (TIMESTAMP) # Дата создания
+    └── updated_at (TIMESTAMP) # Дата обновления
+
+E2E Шифрование:
+├── Алгоритм: AES-256-GCM
+├── Ключ генерируется для каждого чата
+├── Шифруется на клиенте перед отправкой
+├── Расшифровывается на клиенте после получения
+├── Сервер хранит только зашифрованные данные
+└── Ключи передаются через защищенный канал
+
+Redis кэширование:
+├── chat:members:{chatId}     # Участники чата (TTL: 30 мин)
+├── chat:info:{chatId}        # Информация о чате (TTL: 1 час)
+├── user:chats:{userId}       # Чаты пользователя (TTL: 15 мин)
+├── message:cache:{messageId} # Кэш сообщений (TTL: 5 мин)
+└── typing:{chatId}           # Состояние печати (TTL: 10 сек)
+
+──────────────────────────────────────────────────────────────────────────────
+
+4. FILE SERVICE (порт 3004) - УПРАВЛЕНИЕ ФАЙЛАМИ
+──────────────────────────────────────────────────────────────────────────────
+Назначение: Загрузка, хранение, обработка и доставка файлов
+
+Технологии:
+├── Node.js 18 + TypeScript 5.5
+├── Express.js 4.18 (HTTP сервер)
+├── Multer для загрузки файлов
+├── Sharp для обработки изображений
+├── FFmpeg для обработки видео
+├── AWS SDK для работы с S3 (MinIO)
+├── Drizzle ORM для PostgreSQL
+├── Redis для кэширования метаданных
+├── Crypto для шифрования файлов
+└── Winston для логирования
+
+Структура кода:
+file-service/
+├── src/
+│   ├── config/
+│   │   └── index.ts              # Конфигурация
+│   ├── controllers/
+│   │   └── file.controller.ts    # HTTP контроллеры
+│   ├── services/
+│   │   ├── file.service.ts       # Основная логика файлов
+│   │   ├── storage.service.ts    # Работа с S3/MinIO
+│   │   ├── processing.service.ts # Обработка файлов
+│   │   └── cache.service.ts      # Кэширование
+│   ├── middleware/
+│   │   ├── auth.middleware.ts    # Аутентификация
+│   │   └── validation.middleware.ts # Валидация
+│   ├── routes/
+│   │   ├── file.routes.ts        # Маршруты файлов
+│   │   └── index.ts              # Сборка маршрутов
+│   ├── utils/
+│   │   └── logger.ts             # Логирование
+│   ├── app.ts                    # Express приложение
+│   └── index.ts                  # Точка входа
+├── package.json
+├── tsconfig.json
+└── Dockerfile
+
+API эндпоинты:
+├── POST /api/v1/files/upload         # Загрузить файл
+├── POST /api/v1/files/upload-multiple # Множественная загрузка
+├── GET  /api/v1/files/user           # Файлы пользователя
+├── GET  /api/v1/files/{id}           # Информация о файле
+├── GET  /api/v1/files/{id}/download  # Скачать файл
+├── GET  /api/v1/files/{id}/preview   # Предпросмотр файла
+├── POST /api/v1/files/{id}/url       # Временная ссылка на файл
+├── DELETE /api/v1/files/{id}         # Удалить файл
+└── GET  /api/v1/health               # Проверка здоровья
+
+База данных (PostgreSQL таблицы):
+├── files                    # Файлы
+│   ├── id (UUID)            # Уникальный идентификатор
+│   ├── filename (VARCHAR)   # Имя файла в хранилище
+│   ├── original_name (VARCHAR) # Оригинальное имя файла
+│   ├── mime_type (VARCHAR)  # MIME тип файла
+│   ├── size (INTEGER)       # Размер файла в байтах
+│   ├── type (ENUM)          # Тип: image, video, audio, document, archive, other
+│   ├── url (VARCHAR)        # URL файла
+│   ├── thumbnail_url (VARCHAR) # URL превью
+│   ├── preview_url (VARCHAR) # URL предпросмотра
+│   ├── uploaded_by (UUID)   # ID загрузившего пользователя
+│   ├── is_public (BOOLEAN)  # Публичный файл
+│   ├── is_encrypted (BOOLEAN) # Зашифрован
+│   ├── checksum (VARCHAR)   # Контрольная сумма (SHA-256)
+│   ├── tags (JSONB)         # Теги файла
+│   ├── description (TEXT)   # Описание файла
+│   ├── virus_scan_status (ENUM) # Статус проверки на вирусы
+│   ├── metadata (JSONB)     # Метаданные файла
+│   ├── created_at (TIMESTAMP) # Дата загрузки
+│   └── updated_at (TIMESTAMP) # Дата обновления
+└── file_permissions         # Права доступа к файлам
+    ├── id (UUID)            # Уникальный идентификатор
+    ├── file_id (UUID)       # ID файла
+    ├── user_id (UUID)       # ID пользователя
+    ├── permission (ENUM)    # Право: read, write, delete
+    ├── granted_by (UUID)    # Кто предоставил доступ
+    ├── created_at (TIMESTAMP) # Дата предоставления
+    └── expires_at (TIMESTAMP) # Дата истечения (опционально)
+
+S3/MinIO структура хранения:
+gov-platform-files/
+├── uploads/                 # Основные файлы
+│   ├── {userId}/            # Группировка по пользователям
+│   │   ├── {timestamp}-{random}-{filename}
+│   │   └── ...
+│   └── ...
+├── thumbnails/              # Превью изображений
+│   ├── small_              # Размер 150x150
+│   ├── medium_             # Размер 300x300
+│   └── large_              # Размер 800x600
+├── previews/                # Предпросмотры документов
+│   ├── pdf_preview_        # Превью PDF документов
+│   ├── doc_preview_        # Превью Word документов
+│   └── video_thumb_        # Кадры из видео
+├── avatars/                 # Аватары пользователей
+└── temp/                    # Временные файлы (автоочистка)
+
+Возможности обработки файлов:
+├── Изображения (Sharp):
+│   ├── Автогенерация превью (3 размера)
+│   ├── Оптимизация качества и размера
+│   ├── Конвертация форматов (WebP, JPEG, PNG)
+│   ├── Получение метаданных (разрешение, EXIF)
+│   └── Watermark (будущая функция)
+├── Видео (FFmpeg):
+│   ├── Извлечение кадра для превью
+│   ├── Получение метаданных (длительность, разрешение)
+│   ├── Сжатие видео (будущая функция)
+│   └── Генерация preview клипов
+├── Документы:
+│   ├── PDF превью первых страниц
+│   ├── Word документы в изображения
+│   ├── Извлечение текста для индексации
+│   └── Получение метаданных
+└── Аудио:
+    ├── Извлечение метаданных
+    ├── Генерация waveform (будущая функция)
+    └── Сжатие аудио
+
+Безопасность файлов:
+├── Шифрование в хранилище (AES-256-GCM)
+├── Проверка MIME типов при загрузке
+├── Валидация размеров файлов (макс. 100MB)
+├── Антивирусная проверка (готовность к подключению)
+├── Контрольные суммы для проверки целостности
+├── Подписанные URL с истечением срока действия
+├── Права доступа на уровне файлов
+└── Аудит всех операций с файлами
+
+Redis кэширование:
+├── file:info:{fileId}        # Метаданные файла (TTL: 1 час)
+├── file:url:{fileId}         # Временные URL (TTL: время действия)
+├── file:processing:{fileId}  # Статус обработки (TTL: 1 час)
+├── user:files:{userId}       # Список файлов пользователя (TTL: 30 мин)
+└── file:permissions:{fileId} # Права доступа (TTL: 30 мин)
+
+──────────────────────────────────────────────────────────────────────────────
+
+5. API GATEWAY (порт 8080) - ЕДИНАЯ ТОЧКА ВХОДА
+──────────────────────────────────────────────────────────────────────────────
+Назначение: Маршрутизация, балансировка, мониторинг микросервисов
+
+Технологии:
+├── Node.js 18 + TypeScript 5.5
+├── Express.js 4.18 (HTTP сервер)
+├── http-proxy-middleware для проксирования
+├── express-rate-limit для ограничения запросов
+├── helmet для безопасности
+├── cors для CORS политики
+├── compression для сжатия ответов
+├── response-time для метрик
+└── Winston для логирования
+
+Структура кода:
+api-gateway/
+├── src/
+│   ├── config/
+│   │   └── services.ts           # Конфигурация сервисов
+│   ├── middleware/
+│   │   └── proxy.middleware.ts   # Проксирование запросов
+│   ├── utils/
+│   │   ├── health-checker.ts     # Проверка здоровья сервисов
+│   │   └── logger.ts             # Логирование
+│   ├── app.ts                    # Express приложение
+│   └── index.ts                  # Точка входа
+├── package.json
+├── tsconfig.json
+└── Dockerfile
+
+Конфигурация сервисов:
+├── auth-service:
+│   ├── URL: http://auth-service:3001
+│   ├── Prefix: /auth
+│   ├── Timeout: 5 секунд
+│   └── Retries: 3
+├── user-service:
+│   ├── URL: http://user-service:3002
+│   ├── Prefix: /users
+│   ├── Timeout: 5 секунд
+│   └── Retries: 3
+├── chat-service:
+│   ├── URL: http://chat-service:3003
+│   ├── Prefix: /chats
+│   ├── Timeout: 10 секунд (WebSocket)
+│   └── Retries: 2
+└── file-service:
+    ├── URL: http://file-service:3004
+    ├── Prefix: /files
+    ├── Timeout: 30 секунд (файлы)
+    └── Retries: 2
+
+Маршрутизация запросов:
+├── /api/v1/auth/*    → auth-service:3001/api/v1/*
+├── /api/v1/users/*   → user-service:3002/api/v1/*
+├── /api/v1/chats/*   → chat-service:3003/api/v1/*
+├── /api/v1/files/*   → file-service:3004/api/v1/*
+├── /socket.io/*      → chat-service:3003/socket.io/*
+├── /health           → health check всех сервисов
+├── /api/discovery    → список доступных сервисов
+└── /api/docs         → API документация
+
+Функции Gateway:
+├── Проксирование HTTP запросов
+├── Проксирование WebSocket соединений
+├── Rate limiting (1000 запросов за 15 минут на IP)
+├── Health monitoring всех сервисов
+├── Circuit breaker при недоступности сервиса
+├── Load balancing между экземплярами
+├── CORS настройка для фронтенда
+├── Компрессия ответов (gzip)
+├── Логирование всех запросов
+├── Metrics сбор (время ответа, коды статусов)
+├── Автоматический retry при ошибках
+└── Graceful shutdown
+
+Health Check логика:
+├── Проверка каждые 30 секунд
+├── Timeout 5 секунд на сервис
+├── Circuit breaker после 5 неудач подряд
+├── Автовосстановление через 3 успешные проверки
+├── Исключение недоступных сервисов из маршрутизации
+└── Детальная информация о состоянии каждого сервиса
+
+Rate Limiting:
+├── Глобальный лимит: 1000 запросов/15 минут на IP
+├── Login лимит: 5 попыток/минуту
+├── Upload лимит: 10 загрузок/минуту
+├── WebSocket connections: 100 соединений на пользователя
+├── Whitelist для доверенных IP
+└── Blacklist для заблокированных IP
+
+==============================================================================
+                          ИНФРАСТРУКТУРНЫЕ КОМПОНЕНТЫ
+==============================================================================
+
+1. POSTGRESQL (порт 5432) - ОСНОВНАЯ БАЗА ДАННЫХ
+──────────────────────────────────────────────────────────────────────────────
+Версия: PostgreSQL 15 Alpine
+Назначение: Хранение основных данных системы
+
+Конфигурация:
+├── База данных: gov_platform
+├── Пользователь: postgres
+├── Пароль: password (в .env)
+├── Кодировка: UTF-8
+├── Локаль: ru_RU.UTF-8
+└── Timezone: Europe/Moscow
+
+Структура базы данных:
+├── Схема public (основная)
+├── 12 основных таблиц
+├── Индексы для производительности
+├── Foreign Key constraints для целостности
+├── Check constraints для валидации
+├── Triggers для автообновления timestamps
+└── Views для сложных запросов
+
+Основные таблицы:
+├── users (пользователи)
+├── user_contacts (контакты пользователей)
+├── chats (чаты и каналы)
+├── chat_participants (участники чатов)
+├── messages (сообщения)
+├── files (файлы и медиа)
+├── file_permissions (права доступа к файлам)
+├── channels (публичные каналы)
+├── groups (рабочие группы)
+├── bots (боты и автоматизация)
+├── calls (звонки и видеозвонки)
+└── notifications (уведомления)
+
+Индексы для производительности:
+├── users:
+│   ├── idx_users_email (уникальный)
+│   ├── idx_users_status
+│   └── idx_users_department
+├── messages:
+│   ├── idx_messages_chat_id
+│   ├── idx_messages_sender_id
+│   ├── idx_messages_created_at
+│   └── idx_messages_composite (chat_id, created_at)
+├── files:
+│   ├── idx_files_uploaded_by
+│   ├── idx_files_type
+│   ├── idx_files_checksum
+│   └── idx_files_created_at
+└── chat_participants:
+    ├── idx_chat_participants_chat_id
+    ├── idx_chat_participants_user_id
+    └── idx_chat_participants_composite (chat_id, user_id)
+
+Drizzle ORM миграции:
+├── Автоматическое применение при старте сервисов
+├── Версионирование схемы
+├── Rollback возможности
+├── Seed данные для разработки
+└── Validation схемы при изменениях
+
+Backup стратегия:
+├── Ежедневный pg_dump в 2:00 AM
+├── Retention: 30 дней
+├── Point-in-time recovery через WAL
+├── Репликация на standby сервер (продакшен)
+└── Мониторинг размера БД и производительности
+
+──────────────────────────────────────────────────────────────────────────────
+
+2. REDIS (порт 6379) - КЭШ И СЕССИИ
+──────────────────────────────────────────────────────────────────────────────
+Версия: Redis 7 Alpine
+Назначение: Кэширование, сессии, pub/sub для real-time
+
+Конфигурация:
+├── Пароль: redispassword
+├── Max memory: 256MB
+├── Eviction policy: allkeys-lru
+├── Persistence: RDB + AOF
+├── Save intervals: 900 1, 300 10, 60 10000
+└── Append only: yes
+
+Использование по сервисам:
+├── Auth Service:
+│   ├── auth:sessions:{userId}      # Активные сессии
+│   ├── auth:refresh:{token}        # Refresh токены
+│   ├── auth:blacklist:{token}      # Отозванные токены
+│   └── rate_limit:login:{ip}       # Rate limiting логина
+├── User Service:
+│   ├── user:profile:{userId}       # Кэш профилей
+│   ├── user:contacts:{userId}      # Кэш контактов
+│   ├── user:search:{query}         # Результаты поиска
+│   └── user:permissions:{userId}   # Права доступа
+├── Chat Service:
+│   ├── chat:members:{chatId}       # Участники чата
+│   ├── chat:info:{chatId}          # Информация о чате
+│   ├── user:chats:{userId}         # Чаты пользователя
+│   ├── message:cache:{messageId}   # Кэш сообщений
+│   ├── typing:{chatId}             # Состояние печати
+│   └── online:users                # Онлайн пользователи
+├── File Service:
+│   ├── file:info:{fileId}          # Метаданные файлов
+│   ├── file:url:{fileId}           # Временные URL
+│   ├── file:processing:{fileId}    # Статус обработки
+│   └── user:files:{userId}         # Файлы пользователя
+└── API Gateway:
+    ├── rate_limit:{ip}             # Rate limiting
+    ├── health:{service}            # Health status
+    └── circuit_breaker:{service}   # Circuit breaker state
+
+Pub/Sub каналы:
+├── chat:message:{chatId}           # Новые сообщения в чате
+├── user:status:{userId}            # Статус пользователя онлайн/оффлайн
+├── notification:{userId}           # Уведомления пользователю
+├── system:broadcast                # Системные уведомления
+└── admin:events                    # Административные события
+
+TTL стратегия:
+├── Сессии: 24 часа
+├── Профили пользователей: 1 час
+├── Результаты поиска: 15 минут
+├── Временные URL файлов: время действия URL
+├── Состояние печати: 10 секунд
+├── Rate limit счетчики: время окна
+└── Health status: 1 минута
+
+Мониторинг:
+├── Memory usage
+├── Connected clients
+├── Commands per second
+├── Hit rate кэша
+├── Slow query log
+└── Replication lag (если есть)
+
+──────────────────────────────────────────────────────────────────────────────
+
+3. ELASTICSEARCH (порт 9200) - ПОИСК
+──────────────────────────────────────────────────────────────────────────────
+Версия: Elasticsearch 8.8 
+Назначение: Полнотекстовый поиск пользователей и сообщений
+
+Конфигурация:
+├── Cluster name: gov-platform-search
+├── Node name: node-1
+├── Memory: 1GB heap
+├── Discovery type: single-node
+├── Security: отключена для разработки
+└── Network host: 0.0.0.0
+
+Индексы:
+├── users_index (пользователи):
+│   ├── full_name (text, analyzer: russian)
+│   ├── email (keyword)
+│   ├── position (text, analyzer: russian)
+│   ├── department (text, analyzer: russian)
+│   ├── status (keyword)
+│   ├── role (keyword)
+│   └── created_at (date)
+├── messages_index (сообщения, будущее):
+│   ├── content (text, analyzer: russian)
+│   ├── chat_id (keyword)
+│   ├── sender_id (keyword)
+│   ├── type (keyword)
+│   └── created_at (date)
+└── files_index (файлы, будущее):
+    ├── original_name (text, analyzer: russian)
+    ├── description (text, analyzer: russian)
+    ├── type (keyword)
+    ├── tags (keyword)
+    └── uploaded_by (keyword)
+
+Анализаторы:
+├── russian (встроенный):
+│   ├── Tokenizer: standard
+│   ├── Filters: lowercase, russian_stop, russian_stemmer
+│   └── Character filters: html_strip
+└── autocomplete (кастомный):
+    ├── Tokenizer: edge_ngram
+    ├── Min_gram: 2
+    ├── Max_gram: 20
+    └── Filters: lowercase
+
+Mapping настройки:
+├── Dynamic mapping: false (строгий контроль схемы)
+├── Включение _source для всех полей
+├── Fielddata отключена для text полей
+├── Doc values включены для aggregations
+└── Refresh interval: 5 секунд
+
+Поисковые возможности:
+├── Автодополнение по имени пользователя
+├── Поиск по должности и отделу
+├── Fuzzy поиск с исправлением опечаток
+├── Фильтрация по статусу и роли
+├── Сортировка по релевантности
+├── Пагинация результатов
+├── Подсветка найденных терминов
+└── Агрегации по отделам и должностям
+
+Синхронизация с PostgreSQL:
+├── Обновление индекса при изменении пользователя
+├── Batch синхронизация каждые 5 минут
+├── Webhook для real-time обновлений
+├── Retry механизм при ошибках
+└── Conflict resolution при concurrent updates
+
+Мониторинг:
+├── Cluster health (green/yellow/red)
+├── Index size и document count
+├── Query performance
+├── Memory usage
+├── Disk usage
+└── Failed queries
+
+──────────────────────────────────────────────────────────────────────────────
+
+4. MINIO (порт 9000, UI 9001) - S3-СОВМЕСТИМОЕ ХРАНИЛИЩЕ
+──────────────────────────────────────────────────────────────────────────────
+Версия: MinIO RELEASE.2023-07-07T07-13-57Z
+Назначение: Объектное хранилище файлов
+
+Конфигурация:
+├── Access Key: minioadmin
+├── Secret Key: minioadmin123
+├── Console: http://localhost:9001
+├── API: http://localhost:9000
+├── Region: us-east-1
+└── Signature version: v4
+
+Bucket структура:
+gov-platform-files/
+├── uploads/
+│   ├── {userId}/                   # Файлы по пользователям
+│   │   ├── documents/              # Документы
+│   │   ├── images/                 # Изображения
+│   │   ├── videos/                 # Видео файлы
+│   │   ├── audio/                  # Аудио файлы
+│   │   └── archives/               # Архивы
+│   └── shared/                     # Общие файлы
+├── thumbnails/
+│   ├── small/                      # 150x150
+│   ├── medium/                     # 300x300
+│   └── large/                      # 800x600
+├── previews/
+│   ├── documents/                  # PDF, Word превью
+│   ├── videos/                     # Кадры из видео
+│   └── audio/                      # Waveforms
+├── avatars/
+│   ├── users/                      # Аватары пользователей
+│   └── chats/                      # Аватары чатов
+├── temp/                           # Временные файлы
+│   ├── uploads/                    # Промежуточные загрузки
+│   └── processing/                 # Файлы в обработке
+└── system/
+    ├── backups/                    # Бэкапы системы
+    └── logs/                       # Архивы логов
+
+Bucket политики:
+├── Публичное чтение для avatars/
+├── Приватное для uploads/ (только через signed URLs)
+├── Приватное для previews/ (только через API)
+├── Админский доступ для system/
+└── Автоочистка temp/ через lifecycle policy
+
+Lifecycle правила:
+├── Удаление temp/ файлов через 24 часа
+├── Transition в IA storage через 30 дней
+├── Удаление deleted файлов через 30 дней
+├── Сжатие старых логов через 7 дней
+└── Архивирование бэкапов через 90 дней
+
+Versioning и backup:
+├── Versioning включен для critical buckets
+├── Retention: 30 версий или 90 дней
+├── Replication на secondary MinIO (продакшен)
+├── Ежедневный backup metadata
+└── Point-in-time restore возможности
+
+Безопасность:
+├── IAM policies для доступа
+├── Bucket encryption (AES-256)
+├── TLS для всех соединений
+├── Access logging всех операций
+├── Signed URLs с TTL
+└── IP whitelist для admin операций
+
+Мониторинг:
+├── Storage usage per bucket
+├── Request rate и latency
+├── Error rate
+├── Bandwidth usage
+├── Object count
+└── Replication status
+
+──────────────────────────────────────────────────────────────────────────────
+
+5. RABBITMQ (порт 5672, UI 15672) - ОЧЕРЕДИ СООБЩЕНИЙ
+──────────────────────────────────────────────────────────────────────────────
+Версия: RabbitMQ 3.12 Management Alpine
+Назначение: Асинхронная обработка задач и межсервисная коммуникация
+
+Конфигурация:
+├── Username: rabbitmq
+├── Password: rabbitmq123
+├── Management UI: http://localhost:15672
+├── AMQP Port: 5672
+├── Virtual host: /
+└── Heartbeat: 60 секунд
+
+Exchanges (обменники):
+├── chat.events (topic):
+│   ├── Routing keys:
+│   │   ├── message.sent.{chatId}
+│   │   ├── message.updated.{chatId}
+│   │   ├── user.joined.{chatId}
+│   │   ├── user.left.{chatId}
+│   │   └── typing.{chatId}.{userId}
+│   └── Durability: true
+├── file.processing (direct):
+│   ├── Routing keys:
+│   │   ├── thumbnail.generate
+│   │   ├── preview.generate
+│   │   ├── virus.scan
+│   │   └── metadata.extract
+│   └── Durability: true
+├── notifications (fanout):
+│   ├── Broadcast ко всем подписанным сервисам
+│   ├── Push notifications
+│   ├── Email notifications
+│   └── SMS notifications
+└── user.events (topic):
+    ├── Routing keys:
+    │   ├── profile.updated.{userId}
+    │   ├── status.changed.{userId}
+    │   ├── contact.added.{userId}
+    │   └── permission.changed.{userId}
+    └── Durability: true
+
+Queues (очереди):
+├── message.processing:
+│   ├── Consumer: Chat Service
+│   ├── Durability: true
+│   ├── Auto-delete: false
+│   ├── TTL: 24 часа
+│   └── Max priority: 10
+├── file.thumbnail:
+│   ├── Consumer: File Service
+│   ├── Durability: true
+│   ├── Concurrent workers: 3
+│   ├── Prefetch count: 1
+│   └── Retry: 3 попытки
+├── email.notifications:
+│   ├── Consumer: Notification Service (будущее)
+│   ├── Durability: true
+│   ├── Rate limiting: 100/минуту
+│   ├── Dead letter: email.failed
+│   └── TTL: 1 час
+├── push.notifications:
+│   ├── Consumer: Notification Service (будущее)
+│   ├── Durability: true
+│   ├── Priority queue: true
+│   ├── Batch size: 100
+│   └── TTL: 30 минут
+└── system.events:
+    ├── Consumer: все сервисы
+    ├── Durability: true
+    ├── Broadcast режим
+    ├── TTL: 5 минут
+    └── Auto-ack: false
+
+Message patterns:
+├── Work Queue (балансировка нагрузки):
+│   ├── Файлы → обработка превью
+│   ├── Email → отправка уведомлений
+│   └── Push → доставка нотификаций
+├── Publish/Subscribe (рассылка):
+│   ├── Системные события
+│   ├── Broadcast уведомления
+│   └── Статистика и метрики
+├── Routing (условная доставка):
+│   ├── События чатов по ID
+│   ├── Уведомления по типу
+│   └── Пользовательские события
+└── RPC (запрос-ответ):
+    ├── Межсервисная коммуникация
+    ├── Валидация данных
+    └── Проверка прав доступа
+
+Dead Letter Queues:
+├── file.processing.failed
+├── email.notifications.failed
+├── push.notifications.failed
+└── general.failed
+
+Monitoring:
+├── Queue depth
+├── Message rate (in/out)
+├── Consumer count
+├── Memory usage
+├── Disk usage
+├── Connection count
+├── Channel count
+└── Error rate
+
+High Availability:
+├── Cluster из 3 нод (продакшен)
+├── Mirrored queues
+├── Automatic failover
+├── Load balancing
+└── Backup и restore
+
+──────────────────────────────────────────────────────────────────────────────
+
+6. NGINX (порт 80) - LOAD BALANCER И REVERSE PROXY
+──────────────────────────────────────────────────────────────────────────────
+Версия: Nginx Alpine latest
+Назначение: Балансировка нагрузки, SSL termination, статические файлы
+
+Конфигурация:
+├── Worker processes: auto
+├── Worker connections: 1024
+├── Keepalive timeout: 65
+├── Client max body size: 100MB
+├── Gzip compression: включено
+└── Access log: включено
+
+Upstream servers:
+├── api_gateway:
+│   ├── server api-gateway:8080
+│   ├── Keepalive: 32 соединения
+│   ├── Health check: /health
+│   └── Fail timeout: 30 секунд
+├── frontend_servers:
+│   ├── server frontend-shell:80
+│   ├── Backup server: maintenance page
+│   └── Health check: /health
+└── file_servers:
+    ├── server file-service:3004
+    ├── Max fails: 3
+    └── Fail timeout: 60 секунд
+
+Location блоки:
+├── / (root):
+│   ├── Proxy to frontend-shell:80
+│   ├── Try files или fallback к index.html
+│   ├── Cache static assets (1 год)
+│   └── Gzip compression
+├── /api/:
+│   ├── Proxy to api-gateway:8080
+│   ├── Rate limiting: 1000 req/15min
+│   ├── Timeout: 60 секунд
+│   ├── Headers: X-Real-IP, X-Forwarded-For
+│   └── CORS headers
+├── /socket.io/:
+│   ├── Proxy to api-gateway:8080
+│   ├── WebSocket upgrade support
+│   ├── Sticky sessions
+│   ├── No caching
+│   └── Long timeout: 24 часа
+├── /files/:
+│   ├── Proxy to file-service:3004
+│   ├── Large client body size
+│   ├── Extended timeout: 300 секунд
+│   └── Range requests support
+└── /health:
+    ├── Health check endpoint
+    ├── Internal only
+    ├── Response: "healthy"
+    └── No logging
+
+Rate limiting:
+├── API общий: 1000 запросов/15 минут на IP
+├── Login: 5 попыток/минуту на IP
+├── File upload: 10 загрузок/минуту на IP
+├── WebSocket: 100 соединений на IP
+└── Burst handling с delay
+
+Security headers:
+├── X-Frame-Options: SAMEORIGIN
+├── X-XSS-Protection: 1; mode=block
+├── X-Content-Type-Options: nosniff
+├── Referrer-Policy: no-referrer-when-downgrade
+├── Content-Security-Policy: restrictive
+└── Strict-Transport-Security (HTTPS)
+
+Caching:
+├── Static assets: 1 год
+├── HTML: 1 час
+├── API responses: no-cache
+├── WebSocket: no-cache
+├── File previews: 24 часа
+└── Proxy cache: 512MB
+
+SSL/TLS (продакшен):
+├── TLS 1.2/1.3 только
+├── Strong ciphers только
+├── HSTS включен
+├── OCSP stapling
+├── Certificate transparency
+└── Auto-renewal через certbot
+
+Logging:
+├── Access log: JSON format
+├── Error log: warn level
+├── Custom log format с метриками
+├── Log rotation: ежедневно
+├── Retention: 30 дней
+└── Monitoring integration
+
+==============================================================================
+                           ОБЩИЕ ПАКЕТЫ И УТИЛИТЫ
+==============================================================================
+
+SHARED PACKAGES:
+├── @gov-platform/types - TypeScript типы и Zod схемы
+├── @gov-platform/database - Drizzle ORM схемы и миграции
+├── @gov-platform/config - Общие конфигурации
+└── @gov-platform/utils - Общие утилиты
+
+@gov-platform/types:
+├── Все интерфейсы данных (User, Chat, Message, File)
+├── Enum типы (UserRole, ChatType, MessageType)
+├── Zod схемы для валидации
+├── API request/response типы
+├── Database schema типы
+└── Общие utility типы
+
+@gov-platform/database:
+├── Drizzle ORM схемы всех таблиц
+├── Database connection утилиты
+├── Migration скрипты
+├── Seed данные
+├── Repository базовые классы
+└── Database health checks
+
+БЕЗОПАСНОСТЬ:
+├── JWT токены с коротким TTL (15 минут)
+├── Refresh токены с длинным TTL (7 дней)
+├── E2E шифрование чатов (AES-256-GCM)
+├── Шифрование файлов в хранилище
+├── Rate limiting на всех уровнях
+├── Валидация всех входных данных
+├── CORS настройки
+├── Security headers
+├── Audit logging всех действий
+└── Regular security updates
+
+МОНИТОРИНГ И ЛОГИРОВАНИЕ:
+├── Winston structured logging во всех сервисах
+├── Health checks каждые 30 секунд
+├── Metrics collection (время ответа, ошибки, throughput)
+├── Error tracking и alerting
+├── Performance monitoring
+├── Resource usage monitoring
+├── Business metrics (активные пользователи, сообщения/день)
+└── Audit trails для compliance
+
+DEPLOYMENT И CI/CD:
+├── Docker контейнеры для всех компонентов
+├── Docker Compose для локальной разработки
+├── Kubernetes манифесты (готовность)
+├── Helm charts (готовность)
+├── GitHub Actions workflows (готовность)
+├── Automated testing pipeline
+├── Blue-green deployment
+└── Rollback capabilities
+
+SCALABILITY:
+├── Горизонтальное масштабирование всех сервисов
+├── Database read replicas
+├── Redis clustering
+├── MinIO distributed mode
+├── RabbitMQ clustering
+├── CDN для статических файлов
+├── Caching на всех уровнях
+└── Auto-scaling based on metrics
+
+==============================================================================
+                               ПОРТЫ И ДОСТУП
+==============================================================================
+
+ВНЕШНИЕ ПОРТЫ:
+├── 3000 - Frontend Shell (React PWA)
+├── 8080 - API Gateway (единая точка входа)
+├── 80   - Nginx (load balancer)
+├── 5432 - PostgreSQL (база данных)
+├── 6379 - Redis (кэш и сессии)
+├── 9200 - Elasticsearch (поиск)
+├── 9000 - MinIO API (файловое хранилище)
+├── 9001 - MinIO Console (веб-интерфейс)
+├── 5672 - RabbitMQ AMQP (очереди)
+└── 15672 - RabbitMQ Management (веб-интерфейс)
+
+ВНУТРЕННИЕ ПОРТЫ:
+├── 3001 - Auth Service
+├── 3002 - User Service  
+├── 3003 - Chat Service
+└── 3004 - File Service
+
+ДОСТУП ИЗ ВНЕ:
+├── http://localhost:3000 - Основное приложение
+├── http://localhost:8080 - API Gateway
+├── http://localhost:9001 - MinIO Console (admin: minioadmin/minioadmin123)
+├── http://localhost:15672 - RabbitMQ Management (admin: rabbitmq/rabbitmq123)
+└── http://localhost:9200 - Elasticsearch (без авторизации)
+
+==============================================================================
+                            КОМАНДЫ УПРАВЛЕНИЯ
+==============================================================================
+
+ЗАПУСК СИСТЕМЫ:
+├── make install          # Установка зависимостей
+├── make docker-up        # Запуск всех сервисов
+├── make db-setup         # Инициализация БД
+├── make health           # Проверка состояния
+└── make logs             # Просмотр логов
+
+РАЗРАБОТКА:
+├── make dev              # Запуск в режиме разработки
+├── make auth-dev         # Только Auth Service
+├── make user-dev         # Только User Service
+├── make chat-dev         # Только Chat Service
+├── make file-dev         # Только File Service
+└── make frontend-dev     # Только Frontend
+
+ТЕСТИРОВАНИЕ:
+├── make test             # Все тесты
+├── make test-unit        # Unit тесты
+├── make test-integration # Integration тесты
+├── make test-e2e         # E2E тесты
+└── make lint             # Проверка кода
+
+MAINTENANCE:
+├── make backup           # Backup баз данных
+├── make restore          # Restore из backup
+├── make clean            # Очистка временных файлов
+├── make update           # Обновление зависимостей
+└── make docker-clean     # Очистка Docker
+
+==============================================================================
+                              ПРОИЗВОДИТЕЛЬНОСТЬ
+==============================================================================
+
+ОЖИДАЕМЫЕ ХАРАКТЕРИСТИКИ:
+├── Concurrent users: 1000+
+├── Messages per second: 100+
+├── File uploads: 50 concurrent
+├── Database connections: 100 per service
+├── Redis connections: 50 per service
+├── Response time API: <200ms (p95)
+├── WebSocket latency: <50ms
+├── File upload time: <30s for 100MB
+├── Search response: <100ms
+└── Memory usage: ~2GB total
+
+ОПТИМИЗАЦИИ:
+├── Connection pooling во всех сервисах
+├── Database query optimization с индексами
+├── Redis caching с умным TTL
+├── File streaming для больших файлов
+├── Compression на всех уровнях (gzip, br)
+├── CDN ready static assets
+├── Database query batching
+├── Async processing через RabbitMQ
+├── WebSocket connection sharing
+└── Graceful degradation при высокой нагрузке
+
+==============================================================================

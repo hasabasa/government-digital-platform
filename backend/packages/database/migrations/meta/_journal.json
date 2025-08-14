@@ -1,0 +1,20 @@
+{
+  "version": "5",
+  "dialect": "pg",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1755130687041,
+      "tag": "0000_early_retro_girl",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1755156697595,
+      "tag": "0001_jittery_chat",
+      "breakpoints": true
+    }
+  ]
+}

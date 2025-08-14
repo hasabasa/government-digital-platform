@@ -1,0 +1,228 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --color-primary: #2D7DD2;
+    --color-primary-dark: #1E5FA5;
+    --color-secondary: #F4A261;
+    --color-bg: #F8FAFC;
+    --color-bg-dark: #1E293B;
+    --color-text: #1F2937;
+    --color-text-light: #F9FAFB;
+    --color-border: #E2E8F0;
+  }
+
+  * {
+    @apply border-gray-200 dark:border-gray-700;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 dark:bg-gray-900 dark:text-gray-100;
+    font-family: 'Inter', sans-serif;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  /* Scrollbar styles */
+  ::-webkit-scrollbar {
+    @apply w-2;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-gray-100 dark:bg-gray-800;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 dark:bg-gray-600 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400 dark:bg-gray-500;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-primary/20 text-primary-dark;
+  }
+}
+
+@layer components {
+  /* Sidebar styles */
+  .sidebar {
+    @apply bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-700;
+  }
+
+  .sidebar-item {
+    @apply flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-800 cursor-pointer transition-colors duration-200;
+  }
+
+  .sidebar-item.active {
+    @apply bg-primary/10 dark:bg-primary/20 border-r-2 border-primary;
+  }
+
+  /* Chat message styles */
+  .message {
+    @apply max-w-[70%] p-3 rounded-2xl break-words;
+  }
+
+  .message.incoming {
+    @apply bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white;
+  }
+
+  .message.outgoing {
+    @apply bg-primary text-white ml-auto;
+  }
+
+  /* Input styles */
+  .input {
+    @apply w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
+           bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100
+           focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent
+           placeholder:text-gray-500 dark:placeholder:text-gray-400;
+  }
+
+  /* Button styles */
+  .btn {
+    @apply px-4 py-2 rounded-lg font-medium transition-colors duration-200 
+           focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary;
+  }
+
+  .btn-primary {
+    @apply bg-primary text-white hover:bg-primary-dark;
+  }
+
+  .btn-secondary {
+    @apply bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-gray-100 
+           hover:bg-gray-300 dark:hover:bg-gray-600;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-gray-600 dark:text-gray-400 
+           hover:bg-gray-100 dark:hover:bg-gray-800;
+  }
+
+  /* Avatar styles */
+  .avatar {
+    @apply rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-400;
+  }
+
+  /* Card styles */
+  .card {
+    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-sm;
+  }
+
+  /* Header styles */
+  .header {
+    @apply flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900;
+  }
+
+  /* Chat composer styles */
+  .composer {
+    @apply flex items-center gap-3 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900;
+  }
+
+  .composer-input {
+    @apply flex-1 bg-gray-100 dark:bg-gray-800 rounded-lg px-3 py-2 
+           text-gray-900 dark:text-gray-100 placeholder:text-gray-500 dark:placeholder:text-gray-400
+           focus:outline-none focus:ring-2 focus:ring-primary;
+  }
+
+  /* Toast animations */
+  .toast-enter {
+    @apply opacity-0 transform translate-y-2;
+  }
+
+  .toast-enter-active {
+    @apply opacity-100 transform translate-y-0 transition-all duration-300;
+  }
+
+  .toast-exit {
+    @apply opacity-100 transform translate-y-0;
+  }
+
+  .toast-exit-active {
+    @apply opacity-0 transform translate-y-2 transition-all duration-300;
+  }
+
+  /* Mobile responsive */
+  .mobile-hidden {
+    @apply hidden lg:block;
+  }
+
+  .mobile-only {
+    @apply block lg:hidden;
+  }
+
+  /* Loading spinner */
+  .spinner {
+    @apply animate-spin h-5 w-5 border-2 border-current border-t-transparent rounded-full;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply animate-pulse bg-gray-200 dark:bg-gray-700 rounded;
+  }
+
+  /* Focus visible for accessibility */
+  .focus-visible {
+    @apply focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2;
+  }
+
+  /* Typography */
+  .text-title {
+    @apply text-lg font-semibold text-gray-900 dark:text-white;
+  }
+
+  .text-subtitle {
+    @apply text-sm text-gray-500 dark:text-gray-400;
+  }
+
+  .text-body {
+    @apply text-base text-gray-700 dark:text-gray-300;
+  }
+
+  .text-caption {
+    @apply text-xs text-gray-500 dark:text-gray-400;
+  }
+}
+
+@layer utilities {
+  /* Custom utilities */
+  .chat-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: rgb(203 213 225) transparent;
+  }
+
+  .dark .chat-scrollbar {
+    scrollbar-color: rgb(75 85 99) transparent;
+  }
+
+  /* Safe area for mobile */
+  .safe-top {
+    padding-top: env(safe-area-inset-top);
+  }
+
+  .safe-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-left {
+    padding-left: env(safe-area-inset-left);
+  }
+
+  .safe-right {
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Backdrop blur utilities */
+  .backdrop-blur-light {
+    backdrop-filter: blur(10px);
+    background-color: rgba(248, 250, 252, 0.8);
+  }
+
+  .dark .backdrop-blur-light {
+    background-color: rgba(30, 41, 59, 0.8);
+  }
+}
