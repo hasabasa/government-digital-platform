@@ -166,6 +166,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   );
 
   const handleNavigate = (path: string) => {
+    console.log('Navigating to:', path);
     navigate(path);
     if (isMobile && onClose) {
       onClose();

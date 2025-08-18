@@ -117,7 +117,7 @@ export class HealthChecker {
         healthy: false,
         lastCheck: new Date(),
         responseTime,
-        error: error.message,
+        error: error instanceof Error ? error.message : String(error),
         consecutiveFailures,
       };
 
@@ -127,7 +127,7 @@ export class HealthChecker {
       if (currentStatus?.healthy === true || consecutiveFailures % 10 === 0) {
         logger.error('Service health check failed', {
           service: serviceName,
-          error: error.message,
+          error: error instanceof Error ? error.message : String(error),
           consecutiveFailures,
           responseTime,
         });

@@ -1,4 +1,4 @@
-import jwt from 'jsonwebtoken';
+import jwt, { SignOptions } from 'jsonwebtoken';
 import { config } from '../config';
 
 export interface JwtPayload {
@@ -20,12 +20,12 @@ export class JwtUtils {
   static generateAccessToken(payload: Omit<JwtPayload, 'type'>): string {
     return jwt.sign(
       { ...payload, type: 'access' },
-      config.jwt.accessSecret,
+      config.jwt.accessSecret as string,
       {
         expiresIn: config.jwt.accessExpiresIn,
         issuer: config.jwt.issuer,
         audience: config.jwt.audience,
-      }
+      } as any
     );
   }
 
@@ -35,12 +35,12 @@ export class JwtUtils {
   static generateRefreshToken(payload: Omit<JwtPayload, 'type'>): string {
     return jwt.sign(
       { ...payload, type: 'refresh' },
-      config.jwt.refreshSecret,
+      config.jwt.refreshSecret as string,
       {
         expiresIn: config.jwt.refreshExpiresIn,
         issuer: config.jwt.issuer,
         audience: config.jwt.audience,
-      }
+      } as any
     );
   }
 

@@ -11,6 +11,7 @@ import ChatPage from './pages/ChatPage';
 import GroupsPage from './pages/GroupsPage';
 import CallsPage from './pages/CallsPage';
 import OrdersPage from './pages/OrdersPage';
+import { TestDashboard } from './pages/TestDashboard';
 import { WebSocketProvider } from './providers/WebSocketProvider';
 import './styles/globals.css';
 
@@ -73,6 +74,9 @@ function App() {
                 </PublicRoute>
               }
             />
+            
+            {/* Test page - публичная для отладки */}
+            <Route path="/test" element={<TestDashboard />} />
 
             {/* Protected routes */}
             <Route
@@ -106,7 +110,57 @@ function App() {
               }
             />
             <Route
+              path="/chat/:chatId"
+              element={
+                <ProtectedRoute>
+                  <WebSocketProvider>
+                    <ChatPage />
+                  </WebSocketProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
               path="/groups"
+              element={
+                <ProtectedRoute>
+                  <WebSocketProvider>
+                    <GroupsPage />
+                  </WebSocketProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/groups/:groupId"
+              element={
+                <ProtectedRoute>
+                  <WebSocketProvider>
+                    <GroupsPage />
+                  </WebSocketProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/channels/:channelId"
+              element={
+                <ProtectedRoute>
+                  <WebSocketProvider>
+                    <ChatPage />
+                  </WebSocketProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/channels/create"
+              element={
+                <ProtectedRoute>
+                  <WebSocketProvider>
+                    <GroupsPage />
+                  </WebSocketProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/groups/create"
               element={
                 <ProtectedRoute>
                   <WebSocketProvider>

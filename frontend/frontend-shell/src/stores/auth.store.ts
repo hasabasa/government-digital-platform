@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User } from '@gov-platform/types';
+import { User } from '../types';
 
 interface AuthState {
   user: User | null;
@@ -22,7 +22,7 @@ interface AuthActions {
 
 export const useAuthStore = create<AuthState & AuthActions>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       // State
       user: null,
       token: null,

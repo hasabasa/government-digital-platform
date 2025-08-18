@@ -1,0 +1,40 @@
+You are integrating role-based access control into an existing frontend without altering UI or component structure.
+
+Roles to implement:
+1. Minister:
+   - Can send messages to all department heads in their ministry.
+   - Can message any employee in the system.
+   - Can issue orders (visible to department heads and below).
+   - Can create tasks for any employee.
+   - Has a general chat with ministry colleagues.
+
+2. Department Head:
+   - Can message all employees in their department.
+   - Can issue orders for the department.
+   - Can create tasks for section heads and employees.
+   - Has chats with section heads and ministry leadership.
+
+3. Section Head:
+   - Can message employees in their section.
+   - Can create tasks for the section or specific employees.
+   - Has chats with section employees and department leadership.
+
+4. Employee:
+   - Sees news feed.
+   - Can message colleagues in their section.
+   - Can create personal tasks and (with permission) tasks for section colleagues.
+   - Cannot see orders above their level.
+
+Requirements:
+- Fetch role info from backend endpoint: GET /api/v1/users/profile
+- Store role in frontend state (e.g., Zustand store).
+- Conditionally render available actions (create task, issue order, send message) based on role.
+- Hide or disable UI actions that user role is not permitted to perform.
+- When creating tasks or sending messages, dynamically filter recipient list based on role hierarchy.
+- When viewing orders, only display those allowed for current role.
+- All role checks must be done both in frontend (for UX) and backend (for security).
+
+Ensure:
+- No changes to existing UI design.
+- Role logic should be integrated with existing task creation, chat, and orders modules.
+- Role restrictions must be enforced for API calls (block unauthorized actions).

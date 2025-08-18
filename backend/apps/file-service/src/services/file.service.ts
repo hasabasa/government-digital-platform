@@ -1,5 +1,5 @@
 import { DatabaseConnection } from '@gov-platform/database';
-import { files, filePermissions } from '@gov-platform/database/schema';
+import { files, filePermissions } from '@gov-platform/database';
 import { eq, and, or, desc, sql } from 'drizzle-orm';
 import {
   File,
@@ -97,7 +97,7 @@ export class FileService {
         userId,
       });
 
-      return createdFile;
+      return createdFile as any;
     } catch (error) {
       logger.error('File upload failed', { error: (error as Error).message, userId });
       throw error;
@@ -133,7 +133,7 @@ export class FileService {
       // Cache the file
       await this.cacheService.cacheFile(file);
 
-      return file;
+              return file as any;
     } catch (error) {
       logger.error('Get file by ID failed', { error: (error as Error).message, fileId, userId });
       throw error;
@@ -300,7 +300,7 @@ export class FileService {
 
       let whereCondition = eq(files.uploadedBy, userId);
       if (type) {
-        whereCondition = and(whereCondition, eq(files.type, type as any));
+        whereCondition = and(whereCondition!, eq(files.type, type as any));
       }
 
       const [filesResult, countResult] = await Promise.all([
@@ -321,7 +321,7 @@ export class FileService {
       const totalPages = Math.ceil(total / limit);
 
       return {
-        data: filesResult,
+        data: filesResult as any,
         total,
         page,
         limit,
@@ -398,7 +398,7 @@ export class FileService {
       )
       .limit(1);
 
-    return existingFile || null;
+    return (existingFile as any) || null;
   }
 
   /**

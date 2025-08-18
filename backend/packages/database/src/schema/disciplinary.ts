@@ -40,7 +40,7 @@ export const severityLevelEnum = pgEnum('severity_level', [
 ]);
 
 // Таблица дисциплинарных взысканий
-export const disciplinaryActions = pgTable('disciplinary_actions', {
+export const disciplinaryActions: any = pgTable('disciplinary_actions', {
   id: uuid('id').primaryKey().defaultRandom(),
   
   // Кого касается взыскание

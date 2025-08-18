@@ -3,7 +3,7 @@ import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { Avatar } from '../ui/Avatar';
-import { Message } from '@gov-platform/types';
+import { Message } from '../../types';
 import { 
   Check, 
   CheckCheck, 

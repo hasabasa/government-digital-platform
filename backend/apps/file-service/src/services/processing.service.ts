@@ -58,7 +58,7 @@ export class ProcessingService {
         const outputBuffer: Buffer[] = [];
 
         ffmpeg()
-          .input(buffer)
+          .input(buffer as any)
           .seekInput(time)
           .outputOptions([
             '-vframes 1',
@@ -320,7 +320,7 @@ export class ProcessingService {
     try {
       return new Promise((resolve, reject) => {
         ffmpeg()
-          .input(buffer)
+          .input(buffer as any)
           .ffprobe((error, metadata) => {
             if (error) {
               reject(new Error(`Failed to get video metadata: ${(error as Error).message}`));

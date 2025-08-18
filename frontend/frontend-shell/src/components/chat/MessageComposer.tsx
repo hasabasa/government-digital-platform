@@ -19,7 +19,7 @@ interface MessageComposerProps {
 }
 
 export const MessageComposer: React.FC<MessageComposerProps> = ({ className }) => {
-  const { activeChat, addMessage } = useChatStore();
+  const { activeChat } = useChatStore();
   const [message, setMessage] = React.useState('');
   const [isRecording, setIsRecording] = React.useState(false);
   const [attachedFiles, setAttachedFiles] = React.useState<File[]>([]);
@@ -183,7 +183,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ className }) =
             className="absolute right-2 bottom-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
             onClick={() => {
               // TODO: Open emoji picker
-              toast.info('Эмодзи будут добавлены в следующих версиях');
+              toast('Эмодзи будут добавлены в следующих версиях');
             }}
           >
             <Smile className="w-5 h-5" />

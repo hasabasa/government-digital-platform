@@ -46,7 +46,7 @@ export const confidentialityLevelEnum = pgEnum('confidentiality_level', [
 ]);
 
 // Основная таблица задач
-export const tasks = pgTable('tasks', {
+export const tasks: any = pgTable('tasks', {
   id: uuid('id').primaryKey().defaultRandom(),
   
   // Базовая информация

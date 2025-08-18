@@ -65,7 +65,7 @@ export class AuthMiddleware {
     } catch (error) {
       logger.error('Authentication failed', { error: (error as Error).message });
       
-      if (error.response?.status === 401) {
+      if ((error as any).response?.status === 401) {
         res.status(401).json({
           success: false,
           error: 'Invalid or expired token',

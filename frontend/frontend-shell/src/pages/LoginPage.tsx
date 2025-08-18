@@ -15,6 +15,25 @@ export const LoginPage: React.FC = () => {
   const { setAuth, setLoading, setError, isLoading, error } = useAuthStore();
   const [authMethod, setAuthMethod] = useState<AuthMethod>('ecp');
 
+  // Временный быстрый вход для тестирования
+  const handleQuickLogin = () => {
+    const mockUser = {
+      id: '1',
+      email: 'test@gov.kz',
+      firstName: 'Асылбек',
+      lastName: 'Нурланов',
+      role: 'minister',
+      organizationId: '1',
+      position: 'Министр финансов РК',
+      avatar: undefined,
+      isOnline: true
+    };
+    
+    setAuth(mockUser, 'mock-token', 'mock-refresh-token');
+    toast.success('Успешный вход в систему!');
+    navigate('/dashboard');
+  };
+
   const handleCertificateSelect = async (certificate: Certificate, signature: string) => {
     setLoading(true);
     setError(null);
@@ -95,6 +114,19 @@ export const LoginPage: React.FC = () => {
           <p className="text-gray-600 dark:text-gray-400">
             Выберите способ входа в систему
           </p>
+        </div>
+
+        {/* Временная кнопка для тестирования */}
+        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+          <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3 text-center">
+            🧪 Режим тестирования - быстрый вход без ЭЦП
+          </p>
+          <button
+            onClick={handleQuickLogin}
+            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+          >
+            🚀 Войти как Министр финансов (Тест)
+          </button>
         </div>
 
         {/* Переключатель методов аутентификации */}

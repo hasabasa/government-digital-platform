@@ -29,7 +29,7 @@ export const hierarchyLevelEnum = pgEnum('hierarchy_level', [
 ]);
 
 // Основная таблица организационной структуры
-export const governmentStructure = pgTable('government_structure', {
+export const governmentStructure: any = pgTable('government_structure', {
   id: uuid('id').primaryKey().defaultRandom(),
   
   // Базовая информация
@@ -107,7 +107,7 @@ export const civilServiceSubcategoryEnum = pgEnum('civil_service_subcategory', [
 ]);
 
 // Должности государственных служащих
-export const positions = pgTable('positions', {
+export const positions: any = pgTable('positions', {
   id: uuid('id').primaryKey().defaultRandom(),
   
   // Основная информация о должности

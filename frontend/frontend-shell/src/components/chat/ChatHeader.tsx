@@ -10,13 +10,13 @@ import {
   Hash,
   Lock,
   Bell,
-  BellOff
+
 } from 'lucide-react';
 import { Avatar } from '../ui/Avatar';
 import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { useChatStore } from '../../stores/chat.store';
-import { Chat } from '@gov-platform/types';
+import { Chat } from '../../types';
 
 interface ChatHeaderProps {
   onBack?: () => void;

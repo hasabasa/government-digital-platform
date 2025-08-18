@@ -1,0 +1,88 @@
+You are integrating an existing backend into an already developed frontend.
+Do not change the frontend's UI/UX, styling, or component structure.
+
+Goal: Connect the provided frontend code with the backend described in BACKEND_DESCRIPTION.txt using the listed REST API endpoints and WebSocket events.
+
+Requirements:
+1. Keep all existing frontend code structure, UI, and styling intact.
+2. Implement API calls for:
+   - Authentication:
+     POST /api/v1/auth/login
+     POST /api/v1/auth/login-ecp
+     POST /api/v1/auth/egov-mobile/init
+     GET  /api/v1/auth/egov-mobile/status/{sessionId}
+     POST /api/v1/auth/egov-mobile/confirm/{sessionId}
+     POST /api/v1/auth/egov-mobile/cancel/{sessionId}
+     POST /api/v1/auth/login-egov-mobile
+     POST /api/v1/auth/refresh
+     POST /api/v1/auth/logout
+     GET  /api/v1/auth/me
+     POST /api/v1/auth/verify-signature
+   - Users:
+     GET  /api/v1/users/profile
+     PUT  /api/v1/users/profile
+     GET  /api/v1/users/search
+     POST /api/v1/users/contacts
+     GET  /api/v1/users/contacts/list
+     DELETE /api/v1/users/contacts/{id}
+     GET  /api/v1/users/{id}
+   - Chats:
+     POST /api/v1/chats
+     GET  /api/v1/chats/user
+     GET  /api/v1/chats/{id}
+     PUT  /api/v1/chats/{id}
+     DELETE /api/v1/chats/{id}
+     POST /api/v1/chats/messages
+     GET  /api/v1/chats/{id}/messages
+     PUT  /api/v1/chats/messages/{id}
+     DELETE /api/v1/chats/messages/{id}
+   - Files:
+     POST /api/v1/files/upload
+     POST /api/v1/files/upload-multiple
+     GET  /api/v1/files/user
+     GET  /api/v1/files/{id}
+     GET  /api/v1/files/{id}/download
+     GET  /api/v1/files/{id}/preview
+     POST /api/v1/files/{id}/url
+     DELETE /api/v1/files/{id}
+   - Reports:
+     POST /api/v1/reports
+     GET  /api/v1/reports
+     GET  /api/v1/reports/{id}
+     PUT  /api/v1/reports/{id}
+     DELETE /api/v1/reports/{id}
+   - Tasks (Kanban style like Trello):
+     POST /api/v1/tasks
+     GET  /api/v1/tasks
+     GET  /api/v1/tasks/{id}
+     PUT  /api/v1/tasks/{id}
+     DELETE /api/v1/tasks/{id}
+     POST /api/v1/tasks/{id}/comments
+     GET  /api/v1/tasks/{id}/comments
+     POST /api/v1/tasks/{id}/attachments
+     PUT  /api/v1/tasks/{id}/status
+
+3. WebSocket integration:
+   - Real-time chat updates (message:new, message:deleted, message:updated)
+   - Real-time typing indicators
+   - Real-time presence updates (online/offline status)
+   - Real-time task updates (task:created, task:updated, task:deleted)
+   - Real-time report updates (report:created, report:updated, report:deleted)
+
+4. Ensure:
+   - Token handling (JWT refresh & storage)
+   - Error handling with user-friendly messages
+   - Loading states for async actions
+   - Secure API calls with authentication headers
+   - File uploads work with progress indicators
+   - Support for sending/receiving images, files, audio messages, voice notes, “circle” video messages, and reactions
+   - Emoji picker (Apple style) for messages
+   - Ability to like posts and comments, reply to comments, like comments
+   - In Kanban tasks, clicking a task opens detailed view with description, attachments, comments, status updates
+   - In Reports module, users can submit reports and managers can view them
+   - Logout clears session and redirects to login
+
+5. UI Interaction rules:
+   - Sidebar selection highlighting: instead of blue border, active module icon and label should be highlighted
+   - Keep bottom navigation (Chats, Calls, Contacts, Profile) in the center as per Figma design
+   - Do not modify component structure, only connect to backend

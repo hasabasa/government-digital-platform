@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Chat, Message } from '@gov-platform/types';
+import { Chat, Message } from '../types';
 
 interface ChatState {
   chats: Chat[];

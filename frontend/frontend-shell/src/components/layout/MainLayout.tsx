@@ -25,7 +25,11 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ className, children }) =
           // Mobile: overlay behavior
           'fixed inset-y-0 left-0 z-50 lg:z-auto',
           'transform transition-transform duration-300 ease-in-out lg:transform-none',
-          showSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+          showSidebar ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
+          // Allow clicks on desktop always; disable only on mobile when hidden
+          showSidebar
+            ? 'pointer-events-auto'
+            : 'pointer-events-none lg:pointer-events-auto'
         )}
       >
         <Sidebar 
@@ -43,7 +47,7 @@ export const MainLayout: React.FC<MainLayoutProps> = ({ className, children }) =
       )}
 
       {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0 relative">
+      <div className="flex-1 flex flex-col min-w-0 relative z-0">
         {/* Mobile menu button */}
         <button
           onClick={() => setShowSidebar(true)}

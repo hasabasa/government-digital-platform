@@ -80,7 +80,8 @@ export const FileCategorySchema = z.enum([
   'initial_docs',
   'progress_report',
   'final_result',
-  'supporting_materials'
+  'supporting_materials',
+  'general'
 ]);
 
 export type FileCategory = z.infer<typeof FileCategorySchema>;

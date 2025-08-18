@@ -235,7 +235,7 @@ export const CreateAppointmentRequestSchema = z.object({
 export type CreateAppointmentRequest = z.infer<typeof CreateAppointmentRequestSchema>;
 
 // Схемы для получения иерархической информации
-export const HierarchyTreeNodeSchema = z.object({
+export const HierarchyTreeNodeSchema: z.ZodType<any> = z.object({
   id: z.string().uuid(),
   name: z.string(),
   type: OrganizationTypeSchema,

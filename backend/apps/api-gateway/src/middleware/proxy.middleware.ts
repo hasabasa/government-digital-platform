@@ -28,8 +28,10 @@ export class ProxyMiddleware {
       // Add headers
       onProxyReq: (proxyReq, req, res) => {
         // Forward original IP
-        proxyReq.setHeader('X-Forwarded-For', req.ip);
-        proxyReq.setHeader('X-Real-IP', req.ip);
+        if (req.ip) {
+          proxyReq.setHeader('X-Forwarded-For', req.ip);
+          proxyReq.setHeader('X-Real-IP', req.ip);
+        }
         proxyReq.setHeader('X-Gateway-Service', serviceName);
         
         // Log request
@@ -37,7 +39,7 @@ export class ProxyMiddleware {
           service: serviceName,
           method: req.method,
           path: req.path,
-          target: `${service.url}${proxyReq.path}`,
+          target: `${service.url}${proxyReq.path || ''}`,
           userAgent: req.get('User-Agent'),
           ip: req.ip,
         });
@@ -148,7 +150,7 @@ export class ProxyMiddleware {
         },
       });
     } catch (error) {
-      logger.error('Health check failed', { error: error.message });
+      logger.error('Health check failed', { error: error instanceof Error ? error.message : String(error) });
       res.status(500).json({
         success: false,
         error: 'Health check failed',

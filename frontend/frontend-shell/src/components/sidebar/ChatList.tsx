@@ -5,7 +5,7 @@ import { ru } from 'date-fns/locale';
 import { Avatar } from '../ui/Avatar';
 import { Badge } from '../ui/Badge';
 import { useChatStore } from '../../stores/chat.store';
-import { Chat } from '@gov-platform/types';
+import { Chat } from '../../types';
 import { Lock, Users, Hash, Bot } from 'lucide-react';
 
 interface ChatListProps {
@@ -121,7 +121,7 @@ export const ChatList: React.FC<ChatListProps> = ({ className }) => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       filtered = filtered.filter(chat =>
-        chat.name.toLowerCase().includes(query) ||
+        chat.name?.toLowerCase().includes(query) ||
         chat.lastMessage?.content.toLowerCase().includes(query)
       );
     }

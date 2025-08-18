@@ -2,7 +2,7 @@ import React from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../stores/auth.store';
 import { useChatStore } from '../stores/chat.store';
-import { Message, Chat } from '@gov-platform/types';
+import { Message, Chat } from '../types';
 import toast from 'react-hot-toast';
 
 interface WebSocketContextType {

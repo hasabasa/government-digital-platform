@@ -4,7 +4,7 @@ import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
 import { useChatStore } from '../../stores/chat.store';
 import { useAuthStore } from '../../stores/auth.store';
-import { Message } from '@gov-platform/types';
+import { Message } from '../../types';
 import { MessageItem } from './MessageItem';
 import { Loader2 } from 'lucide-react';
 
@@ -79,7 +79,7 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
   return (
     <div className={clsx('flex-1 overflow-y-auto chat-scrollbar', className)}>
       <div className="p-4 space-y-4">
-        {groupedMessages.map((group, groupIndex) => (
+        {groupedMessages.map((group, _groupIndex) => (
           <div key={group.date}>
             {/* Date separator */}
             <div className="flex items-center justify-center mb-4">
@@ -93,7 +93,7 @@ export const MessageList: React.FC<MessageListProps> = ({ className }) => {
               {group.messages.map((message, messageIndex) => {
                 const isOwn = message.senderId === user?.id;
                 const previousMessage = messageIndex > 0 ? group.messages[messageIndex - 1] : null;
-                const nextMessage = messageIndex < group.messages.length - 1 ? group.messages[messageIndex + 1] : null;
+                // const nextMessage = messageIndex < group.messages.length - 1 ? group.messages[messageIndex + 1] : null;
                 
                 // Check if this message should show avatar (first in sequence from this sender)
                 const showAvatar = !previousMessage || previousMessage.senderId !== message.senderId;

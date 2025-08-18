@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
 import { DatabaseConnection } from '@gov-platform/database';
-import { users, sessions } from '@gov-platform/database/schema';
+import { users, sessions } from '@gov-platform/database';
 import { eq, and } from 'drizzle-orm';
 import {
   LoginRequest,
@@ -227,7 +227,7 @@ export class AuthService {
   /**
    * Get current user information
    */
-  async getCurrentUser(userId: string): Promise<User | null> {
+  async getCurrentUser(userId: string): Promise<any | null> {
     try {
       const [user] = await this.db
         .select()

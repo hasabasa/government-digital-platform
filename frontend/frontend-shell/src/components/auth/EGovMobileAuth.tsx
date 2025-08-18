@@ -234,7 +234,7 @@ export const EGovMobileAuth: React.FC<EGovMobileAuthProps> = ({
           <a
             href={authRequest.deepLink}
             className="text-blue-600 hover:text-blue-800 text-xs underline"
-            onClick={() => toast.info('Переходим в приложение eGov Mobile...')}
+            onClick={() => toast('Переходим в приложение eGov Mobile...')}
           >
             Открыть в eGov Mobile
           </a>

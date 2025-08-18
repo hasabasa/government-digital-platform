@@ -95,7 +95,7 @@ export class StorageService {
       // Decrypt file if it was encrypted
       const isEncrypted = result.Metadata?.encrypted === 'true';
       if (isEncrypted && config.security.encryptionEnabled) {
-        fileBuffer = this.decryptBuffer(fileBuffer);
+        fileBuffer = this.decryptBuffer(fileBuffer as any);
       }
 
       return fileBuffer;
