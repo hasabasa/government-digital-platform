@@ -251,12 +251,105 @@ services:
       timeout: 10s
       retries: 3
 
+  # Task Service
+  task-service:
+    build:
+      context: .
+      dockerfile: apps/task-service/Dockerfile
+    container_name: cube-task-service
+    environment:
+      NODE_ENV: production
+      PORT: 3005
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      REDIS_URL: redis://:redispassword@redis:6379
+      AUTH_SERVICE_URL: http://auth-service:3001
+      LOG_LEVEL: info
+    ports:
+      - "3005:3005"
+    networks:
+      - gov-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3005/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Call Service
+  call-service:
+    build:
+      context: .
+      dockerfile: apps/call-service/Dockerfile
+    container_name: cube-call-service
+    environment:
+      NODE_ENV: production
+      PORT: 3006
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      REDIS_URL: redis://:redispassword@redis:6379
+      AUTH_SERVICE_URL: http://auth-service:3001
+      LOG_LEVEL: info
+    ports:
+      - "3006:3006"
+    networks:
+      - gov-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3006/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # Finance Service
+  finance-service:
+    build:
+      context: .
+      dockerfile: apps/finance-service/Dockerfile
+    container_name: cube-finance-service
+    environment:
+      NODE_ENV: production
+      PORT: 3007
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      REDIS_URL: redis://:redispassword@redis:6379
+      AUTH_SERVICE_URL: http://auth-service:3001
+      LOG_LEVEL: info
+    ports:
+      - "3007:3007"
+    networks:
+      - gov-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3007/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # API Gateway
   api-gateway:
     build:
       context: .
       dockerfile: apps/api-gateway/Dockerfile
-    container_name: gov-api-gateway
+    container_name: cube-api-gateway
     environment:
       NODE_ENV: production
       PORT: 8080
@@ -264,6 +357,9 @@ services:
       USER_SERVICE_URL: http://user-service:3002
       CHAT_SERVICE_URL: http://chat-service:3003
       FILE_SERVICE_URL: http://file-service:3004
+      TASK_SERVICE_URL: http://task-service:3005
+      CALL_SERVICE_URL: http://call-service:3006
+      FINANCE_SERVICE_URL: http://finance-service:3007
       ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8080
       LOG_LEVEL: info
     ports:
@@ -278,6 +374,12 @@ services:
       chat-service:
         condition: service_healthy
       file-service:
+        condition: service_healthy
+      task-service:
+        condition: service_healthy
+      call-service:
+        condition: service_healthy
+      finance-service:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:

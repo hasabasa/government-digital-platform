@@ -1,628 +1,673 @@
 import React, { useState } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
-import { 
-  FileText, 
-  Plus, 
-  Search, 
-  Filter,
-  Eye,
-  Edit,
-  Trash,
-  CheckCircle,
-  Clock,
-  AlertCircle,
-  User,
-  Calendar,
-  Download,
-  Share
-} from 'lucide-react';
-import { Button } from '../components/ui/Button';
 import { useAuthStore } from '../stores/auth.store';
 import toast from 'react-hot-toast';
+import {
+  Plus,
+  Search,
+  CheckCircle2,
+  Circle,
+  Clock,
+  AlertTriangle,
+  User,
+  Calendar,
+  ChevronDown,
+  X,
+  MessageSquare,
+  ArrowUp,
+  ArrowDown,
+  Minus,
+} from 'lucide-react';
 
-interface Order {
+// === Типы ===
+interface Task {
   id: string;
-  number: string;
   title: string;
   description: string;
-  status: 'draft' | 'pending' | 'approved' | 'rejected' | 'active' | 'completed';
-  priority: 'low' | 'medium' | 'high' | 'urgent';
-  createdBy: string;
-  assignedTo: string[];
+  status: 'todo' | 'in_progress' | 'completed';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  createdBy: { id: string; name: string };
+  assignedTo: { id: string; name: string };
   createdAt: string;
-  deadline?: string;
-  category: string;
-  attachments?: string[];
+  dueDate?: string;
+  completionNote?: string;
 }
+
+// === Демо-данные (привязаны к аккаунтам) ===
+const DEMO_USERS = [
+  { id: '1', name: 'Хасенхан Казимов' },
+  { id: '2', name: 'Адиль Хамитов' },
+  { id: '3', name: 'Азамат Бекхалиев' },
+  { id: '4', name: 'Алпамыс Мақажан' },
+];
+
+const INITIAL_TASKS: Task[] = [
+  {
+    id: '1',
+    title: 'Доработать мобильную версию приложения',
+    description: 'Адаптировать все страницы под мобильные устройства, проверить responsive layout',
+    status: 'in_progress',
+    priority: 'high',
+    createdBy: { id: '1', name: 'Хасенхан Казимов' },
+    assignedTo: { id: '4', name: 'Алпамыс Мақажан' },
+    createdAt: '2025-02-14',
+    dueDate: '2025-02-20',
+  },
+  {
+    id: '2',
+    title: 'Подготовить ежемесячный финансовый отчёт',
+    description: 'Собрать данные по продажам за февраль, рассчитать прибыль и доли',
+    status: 'todo',
+    priority: 'medium',
+    createdBy: { id: '1', name: 'Хасенхан Казимов' },
+    assignedTo: { id: '2', name: 'Адиль Хамитов' },
+    createdAt: '2025-02-13',
+    dueDate: '2025-02-28',
+  },
+  {
+    id: '3',
+    title: 'Найти поставщика упаковки',
+    description: 'Рассмотреть минимум 3 варианта поставщиков, запросить прайсы',
+    status: 'todo',
+    priority: 'medium',
+    createdBy: { id: '2', name: 'Адиль Хамитов' },
+    assignedTo: { id: '3', name: 'Азамат Бекхалиев' },
+    createdAt: '2025-02-12',
+    dueDate: '2025-02-25',
+  },
+  {
+    id: '4',
+    title: 'Настроить CI/CD для бэкенда',
+    description: 'Настроить автоматический деплой через GitHub Actions для production ветки',
+    status: 'completed',
+    priority: 'high',
+    createdBy: { id: '1', name: 'Хасенхан Казимов' },
+    assignedTo: { id: '4', name: 'Алпамыс Мақажан' },
+    createdAt: '2025-02-10',
+    completionNote: 'Настроены workflows для staging и prod. Docker images автоматически пушатся в registry.',
+  },
+  {
+    id: '5',
+    title: 'Обновить прайс-лист',
+    description: 'Актуализировать цены на все позиции с учетом новых затрат',
+    status: 'todo',
+    priority: 'critical',
+    createdBy: { id: '3', name: 'Азамат Бекхалиев' },
+    assignedTo: { id: '1', name: 'Хасенхан Казимов' },
+    createdAt: '2025-02-15',
+    dueDate: '2025-02-16',
+  },
+  {
+    id: '6',
+    title: 'Протестировать модуль авторизации',
+    description: 'Проверить регистрацию, вход, сброс пароля, JWT рефреш',
+    status: 'in_progress',
+    priority: 'medium',
+    createdBy: { id: '4', name: 'Алпамыс Мақажан' },
+    assignedTo: { id: '4', name: 'Алпамыс Мақажан' },
+    createdAt: '2025-02-14',
+    dueDate: '2025-02-17',
+  },
+];
+
+// === Хелперы ===
+const STATUS_CONFIG = {
+  todo: { label: 'К выполнению', icon: Circle, color: 'text-[#6c7883]', bg: 'bg-[#6c7883]/10' },
+  in_progress: { label: 'В работе', icon: Clock, color: 'text-blue-400', bg: 'bg-blue-500/10' },
+  completed: { label: 'Выполнено', icon: CheckCircle2, color: 'text-green-400', bg: 'bg-green-500/10' },
+};
+
+const PRIORITY_CONFIG = {
+  low: { label: 'Низкий', icon: ArrowDown, color: 'text-[#6c7883]' },
+  medium: { label: 'Средний', icon: Minus, color: 'text-yellow-400' },
+  high: { label: 'Высокий', icon: ArrowUp, color: 'text-orange-400' },
+  critical: { label: 'Срочно', icon: AlertTriangle, color: 'text-red-400' },
+};
 
 const OrdersPage: React.FC = () => {
   const { user } = useAuthStore();
+  const [tasks, setTasks] = useState<Task[]>(INITIAL_TASKS);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
-  const [newOrderData, setNewOrderData] = useState({
+  const [showCompleteModal, setShowCompleteModal] = useState<Task | null>(null);
+  const [completionNote, setCompletionNote] = useState('');
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null);
+
+  // New task form
+  const [newTask, setNewTask] = useState({
     title: '',
     description: '',
-    priority: 'medium' as const,
-    assignedTo: '',
-    deadline: '',
-    category: '',
+    priority: 'medium' as Task['priority'],
+    assignedToId: '',
+    dueDate: '',
   });
 
-  // Check if user can create orders
-  const canCreateOrders = user?.role === 'admin' || user?.role === 'department_head';
-
-  // Mock data
-  const orders: Order[] = [
-    {
-      id: '1',
-      number: 'ПР-2024-001',
-      title: 'О внедрении системы электронного документооборота',
-      description: 'Внедрить систему электронного документооборота во всех подразделениях до конца квартала',
-      status: 'active',
-      priority: 'high',
-      createdBy: 'Иван Иванов',
-      assignedTo: ['IT Отдел', 'Административный отдел'],
-      createdAt: '2024-01-15',
-      deadline: '2024-03-31',
-      category: 'Технологии',
-      attachments: ['specification.pdf', 'timeline.xlsx'],
-    },
-    {
-      id: '2',
-      number: 'ПР-2024-002',
-      title: 'Об организации обучающих семинаров',
-      description: 'Провести серию обучающих семинаров по новым рабочим процессам',
-      status: 'pending',
-      priority: 'medium',
-      createdBy: 'Мария Петрова',
-      assignedTo: ['HR Отдел', 'Учебный центр'],
-      createdAt: '2024-01-20',
-      deadline: '2024-02-28',
-      category: 'Обучение',
-    },
-    {
-      id: '3',
-      number: 'ПР-2024-003',
-      title: 'О проведении инвентаризации',
-      description: 'Провести полную инвентаризацию материальных ценностей',
-      status: 'completed',
-      priority: 'low',
-      createdBy: 'Петр Сидоров',
-      assignedTo: ['Бухгалтерия', 'Хозяйственный отдел'],
-      createdAt: '2024-01-05',
-      deadline: '2024-01-25',
-      category: 'Административное',
-    },
-    {
-      id: '4',
-      number: 'ПР-2024-004',
-      title: 'О мерах кибербезопасности',
-      description: 'Усилить меры кибербезопасности и провести аудит информационных систем',
-      status: 'draft',
-      priority: 'urgent',
-      createdBy: user?.fullName || 'Текущий пользователь',
-      assignedTo: ['IT Отдел', 'Служба безопасности'],
-      createdAt: '2024-01-25',
-      deadline: '2024-02-15',
-      category: 'Безопасность',
-    },
-  ];
-
-  const filteredOrders = orders.filter(order => {
-    const matchesSearch = order.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         order.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         order.number.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesStatus = statusFilter === 'all' || order.status === statusFilter;
-    
+  // === Фильтрация ===
+  const filteredTasks = tasks.filter((task) => {
+    const matchesSearch =
+      task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      task.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || task.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
-  const handleCreateOrder = () => {
-    if (!newOrderData.title.trim()) {
-      toast.error('Введите название приказа');
+  const taskCounts = {
+    all: tasks.length,
+    todo: tasks.filter((t) => t.status === 'todo').length,
+    in_progress: tasks.filter((t) => t.status === 'in_progress').length,
+    completed: tasks.filter((t) => t.status === 'completed').length,
+  };
+
+  // === Действия ===
+  const handleCreateTask = () => {
+    if (!newTask.title.trim()) {
+      toast.error('Введите название задачи');
+      return;
+    }
+    if (!newTask.assignedToId) {
+      toast.error('Выберите исполнителя');
       return;
     }
 
-    console.log('Создание приказа:', newOrderData);
-    toast.success(`Приказ "${newOrderData.title}" создан!`);
-    
-    // Reset form
-    setNewOrderData({
-      title: '',
-      description: '',
-      priority: 'medium',
-      assignedTo: '',
-      deadline: '',
-      category: '',
-    });
+    const assignee = DEMO_USERS.find((u) => u.id === newTask.assignedToId);
+    const task: Task = {
+      id: String(Date.now()),
+      title: newTask.title,
+      description: newTask.description,
+      status: 'todo',
+      priority: newTask.priority,
+      createdBy: { id: user?.id || '1', name: `${user?.firstName || ''} ${user?.lastName || ''}`.trim() },
+      assignedTo: assignee || DEMO_USERS[0],
+      createdAt: new Date().toISOString().slice(0, 10),
+      dueDate: newTask.dueDate || undefined,
+    };
+
+    setTasks((prev) => [task, ...prev]);
+    setNewTask({ title: '', description: '', priority: 'medium', assignedToId: '', dueDate: '' });
     setShowCreateModal(false);
+    toast.success(`Задача назначена: ${assignee?.name}`);
   };
 
-  const handleStatusChange = (orderId: string, newStatus: string) => {
-    console.log(`Изменение статуса приказа ${orderId} на ${newStatus}`);
-    toast.success('Статус приказа обновлен');
+  const handleCompleteTask = (task: Task) => {
+    setShowCompleteModal(task);
+    setCompletionNote('');
   };
 
-  const handleViewOrder = (order: Order) => {
-    console.log('Просмотр приказа:', order.number);
-    setSelectedOrder(order);
+  const submitCompletion = () => {
+    if (!showCompleteModal) return;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === showCompleteModal.id
+          ? { ...t, status: 'completed' as const, completionNote: completionNote || undefined }
+          : t
+      )
+    );
+    setShowCompleteModal(null);
+    toast.success('Задача выполнена!');
   };
 
-  const handleEditOrder = (order: Order) => {
-    console.log('Редактирование приказа:', order.number);
-    toast.info('Функция редактирования в разработке');
+  const handleStartTask = (taskId: string) => {
+    setTasks((prev) =>
+      prev.map((t) => (t.id === taskId ? { ...t, status: 'in_progress' as const } : t))
+    );
+    toast.success('Задача взята в работу');
   };
 
-  const handleDeleteOrder = (order: Order) => {
-    console.log('Удаление приказа:', order.number);
-    toast.success(`Приказ ${order.number} удален`);
-  };
-
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return <CheckCircle className="w-4 h-4 text-green-500" />;
-      case 'active':
-        return <Clock className="w-4 h-4 text-blue-500" />;
-      case 'pending':
-        return <AlertCircle className="w-4 h-4 text-orange-500" />;
-      case 'rejected':
-        return <AlertCircle className="w-4 h-4 text-red-500" />;
-      case 'draft':
-        return <Edit className="w-4 h-4 text-gray-500" />;
-      default:
-        return <FileText className="w-4 h-4 text-gray-500" />;
-    }
-  };
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200';
-      case 'active':
-        return 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200';
-      case 'pending':
-        return 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200';
-      case 'draft':
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-      default:
-        return 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200';
-    }
-  };
-
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'urgent':
-        return 'bg-red-500';
-      case 'high':
-        return 'bg-orange-500';
-      case 'medium':
-        return 'bg-yellow-500';
-      case 'low':
-        return 'bg-green-500';
-      default:
-        return 'bg-gray-500';
-    }
-  };
-
-  const getStatusName = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'Выполнен';
-      case 'active':
-        return 'Активный';
-      case 'pending':
-        return 'На рассмотрении';
-      case 'rejected':
-        return 'Отклонен';
-      case 'draft':
-        return 'Черновик';
-      default:
-        return status;
-    }
+  const isOverdue = (dueDate?: string) => {
+    if (!dueDate) return false;
+    return new Date(dueDate) < new Date();
   };
 
   return (
     <MainLayout>
-      <div className="p-6">
+      <div className="h-full overflow-auto bg-[#0e1621]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Приказы
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Управление приказами и распоряжениями
-            </p>
+        <div className="bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-6 py-4">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h1 className="text-xl font-semibold text-white">Задачи</h1>
+              <p className="text-sm text-[#6c7883]">Управление задачами команды</p>
+            </div>
+            <button
+              onClick={() => setShowCreateModal(true)}
+              className="flex items-center gap-2 bg-[#3a73b8] hover:bg-[#4a83c8] text-white px-4 py-2.5 rounded-xl text-sm font-medium transition-all active:scale-[0.97]"
+            >
+              <Plus className="w-4 h-4" />
+              Новая задача
+            </button>
           </div>
-          {canCreateOrders && (
-            <Button onClick={() => setShowCreateModal(true)}>
-              <Plus className="w-4 h-4 mr-2" />
-              Создать приказ
-            </Button>
-          )}
+
+          {/* Status tabs */}
+          <div className="flex gap-1 bg-[#0e1621] rounded-xl p-1">
+            {[
+              { key: 'all', label: 'Все' },
+              { key: 'todo', label: 'К выполнению' },
+              { key: 'in_progress', label: 'В работе' },
+              { key: 'completed', label: 'Выполнено' },
+            ].map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => setStatusFilter(tab.key)}
+                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${statusFilter === tab.key
+                  ? 'bg-[#3a73b8] text-white'
+                  : 'text-[#6c7883] hover:text-white'
+                  }`}
+              >
+                {tab.label}
+                <span
+                  className={`text-[10px] min-w-[1.25rem] text-center px-1 rounded-full ${statusFilter === tab.key
+                    ? 'bg-white/20'
+                    : 'bg-[#232e3c]'
+                    }`}
+                >
+                  {taskCounts[tab.key as keyof typeof taskCounts]}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
 
-        {/* Search and Filters */}
-        <div className="flex items-center space-x-4 mb-6">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+        {/* Search */}
+        <div className="px-6 py-3">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883]" />
             <input
               type="text"
-              placeholder="Поиск приказов..."
+              placeholder="Поиск задач..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+              className="w-full bg-[#17212b] border border-[#232e3c] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors"
             />
-          </div>
-          
-          <div className="relative">
-            <Filter className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="pl-10 pr-8 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-            >
-              <option value="all">Все статусы</option>
-              <option value="draft">Черновики</option>
-              <option value="pending">На рассмотрении</option>
-              <option value="active">Активные</option>
-              <option value="completed">Выполненные</option>
-              <option value="rejected">Отклоненные</option>
-            </select>
           </div>
         </div>
 
-        {/* Orders List */}
-        <div className="space-y-4">
-          {filteredOrders.map((order) => (
-            <div
-              key={order.id}
-              className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6 hover:shadow-lg transition-shadow"
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex-1">
-                  {/* Header */}
-                  <div className="flex items-center space-x-3 mb-3">
-                    <span className="text-sm font-mono text-gray-500 dark:text-gray-400">
-                      {order.number}
-                    </span>
-                    <div className={`w-3 h-3 rounded-full ${getPriorityColor(order.priority)}`}></div>
-                    <span className={`inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(order.status)}`}>
-                      {getStatusIcon(order.status)}
-                      <span>{getStatusName(order.status)}</span>
-                    </span>
-                  </div>
+        {/* Task List */}
+        <div className="px-6 pb-6 space-y-2">
+          {filteredTasks.map((task) => {
+            const statusCfg = STATUS_CONFIG[task.status];
+            const priorityCfg = PRIORITY_CONFIG[task.priority];
+            const StatusIcon = statusCfg.icon;
+            const PriorityIcon = priorityCfg.icon;
+            const overdue = task.status !== 'completed' && isOverdue(task.dueDate);
 
-                  {/* Title and Description */}
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                    {order.title}
-                  </h3>
-                  <p className="text-gray-600 dark:text-gray-400 mb-4 line-clamp-2">
-                    {order.description}
-                  </p>
+            return (
+              <div
+                key={task.id}
+                onClick={() => setSelectedTask(task)}
+                className="bg-[#17212b] border border-[#232e3c] rounded-xl p-4 hover:border-[#3a73b8]/40 transition-all cursor-pointer group"
+              >
+                <div className="flex items-start gap-3">
+                  {/* Status icon */}
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (task.status === 'todo') handleStartTask(task.id);
+                      else if (task.status === 'in_progress') handleCompleteTask(task);
+                    }}
+                    className={`mt-0.5 flex-shrink-0 transition-colors ${statusCfg.color} hover:text-green-400`}
+                    title={
+                      task.status === 'todo'
+                        ? 'Начать'
+                        : task.status === 'in_progress'
+                          ? 'Завершить'
+                          : 'Выполнено'
+                    }
+                  >
+                    <StatusIcon className="w-5 h-5" />
+                  </button>
 
-                  {/* Meta Information */}
-                  <div className="flex items-center space-x-6 text-sm text-gray-500 dark:text-gray-400">
-                    <div className="flex items-center space-x-1">
-                      <User className="w-4 h-4" />
-                      <span>{order.createdBy}</span>
-                    </div>
-                    <div className="flex items-center space-x-1">
-                      <Calendar className="w-4 h-4" />
-                      <span>{order.createdAt}</span>
-                    </div>
-                    {order.deadline && (
-                      <div className="flex items-center space-x-1">
-                        <Clock className="w-4 h-4" />
-                        <span>До {order.deadline}</span>
-                      </div>
-                    )}
-                    <div className="flex items-center space-x-1">
-                      <span className="text-xs bg-gray-100 dark:bg-gray-700 px-2 py-1 rounded">
-                        {order.category}
-                      </span>
-                    </div>
-                  </div>
+                  <div className="flex-1 min-w-0">
+                    {/* Title */}
+                    <h3
+                      className={`text-sm font-medium mb-1 ${task.status === 'completed'
+                        ? 'text-[#6c7883] line-through'
+                        : 'text-white'
+                        }`}
+                    >
+                      {task.title}
+                    </h3>
 
-                  {/* Assigned To */}
-                  <div className="mt-3">
-                    <p className="text-sm text-gray-600 dark:text-gray-400">
-                      <span className="font-medium">Исполнители:</span> {order.assignedTo.join(', ')}
+                    {/* Description */}
+                    <p className="text-xs text-[#6c7883] mb-2 line-clamp-1">
+                      {task.description}
                     </p>
+
+                    {/* Meta row */}
+                    <div className="flex items-center gap-3 flex-wrap">
+                      {/* Priority */}
+                      <span className={`flex items-center gap-1 text-[11px] ${priorityCfg.color}`}>
+                        <PriorityIcon className="w-3 h-3" />
+                        {priorityCfg.label}
+                      </span>
+
+                      {/* Assignee */}
+                      <span className="flex items-center gap-1 text-[11px] text-[#6c7883]">
+                        <User className="w-3 h-3" />
+                        {task.assignedTo.name.split(' ')[0]}
+                      </span>
+
+                      {/* Due date */}
+                      {task.dueDate && (
+                        <span
+                          className={`flex items-center gap-1 text-[11px] ${overdue ? 'text-red-400' : 'text-[#6c7883]'
+                            }`}
+                        >
+                          <Calendar className="w-3 h-3" />
+                          {new Date(task.dueDate).toLocaleDateString('ru-RU', {
+                            day: 'numeric',
+                            month: 'short',
+                          })}
+                          {overdue && <AlertTriangle className="w-3 h-3" />}
+                        </span>
+                      )}
+
+                      {/* Created by */}
+                      {task.createdBy.id !== task.assignedTo.id && (
+                        <span className="text-[11px] text-[#6c7883]">
+                          от {task.createdBy.name.split(' ')[0]}
+                        </span>
+                      )}
+
+                      {/* Completion note */}
+                      {task.completionNote && (
+                        <span className="flex items-center gap-1 text-[11px] text-green-400/80">
+                          <MessageSquare className="w-3 h-3" />
+                          отчёт
+                        </span>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Attachments */}
-                  {order.attachments && order.attachments.length > 0 && (
-                    <div className="mt-3 flex items-center space-x-2">
-                      <FileText className="w-4 h-4 text-gray-400" />
-                      <span className="text-sm text-gray-500 dark:text-gray-400">
-                        {order.attachments.length} файл(ов) прикреплено
-                      </span>
+                  {/* Action buttons (visible on hover) */}
+                  {task.status !== 'completed' && (
+                    <div className="hidden group-hover:flex items-center gap-1 flex-shrink-0">
+                      {task.status === 'todo' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleStartTask(task.id);
+                          }}
+                          className="text-[10px] bg-blue-500/10 text-blue-400 px-2 py-1 rounded-lg hover:bg-blue-500/20 transition-colors"
+                        >
+                          Начать
+                        </button>
+                      )}
+                      {task.status === 'in_progress' && (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleCompleteTask(task);
+                          }}
+                          className="text-[10px] bg-green-500/10 text-green-400 px-2 py-1 rounded-lg hover:bg-green-500/20 transition-colors"
+                        >
+                          Выполнить
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
+              </div>
+            );
+          })}
 
-                {/* Actions */}
-                <div className="flex items-center space-x-2 ml-4">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleViewOrder(order)}
-                  >
-                    <Eye className="w-4 h-4" />
-                  </Button>
-                  
-                  {(canCreateOrders || order.createdBy === user?.fullName) && (
-                    <>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleEditOrder(order)}
-                      >
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleDeleteOrder(order)}
-                      >
-                        <Trash className="w-4 h-4" />
-                      </Button>
-                    </>
-                  )}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                  >
-                    <Download className="w-4 h-4" />
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                  >
-                    <Share className="w-4 h-4" />
-                  </Button>
+          {/* Empty state */}
+          {filteredTasks.length === 0 && (
+            <div className="text-center py-16">
+              <Circle className="w-12 h-12 text-[#6c7883]/30 mx-auto mb-4" />
+              <h3 className="text-sm font-medium text-[#6c7883] mb-1">
+                {searchQuery ? 'Ничего не найдено' : 'Нет задач'}
+              </h3>
+              <p className="text-xs text-[#6c7883]/60 mb-4">
+                {searchQuery ? 'Попробуйте другой запрос' : 'Создайте первую задачу'}
+              </p>
+              {!searchQuery && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="text-sm text-[#3a73b8] hover:text-blue-400 transition-colors"
+                >
+                  + Новая задача
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* === Create Task Modal === */}
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowCreateModal(false)}>
+          <div
+            className="bg-[#17212b] border border-[#232e3c] rounded-2xl w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#232e3c]">
+              <h3 className="text-base font-semibold text-white">Новая задача</h3>
+              <button onClick={() => setShowCreateModal(false)} className="text-[#6c7883] hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="block text-xs text-[#6c7883] mb-1.5">Название</label>
+                <input
+                  autoFocus
+                  type="text"
+                  value={newTask.title}
+                  onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
+                  placeholder="Что нужно сделать?"
+                  className="w-full bg-[#0e1621] border border-[#232e3c] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-[#6c7883] mb-1.5">Описание</label>
+                <textarea
+                  value={newTask.description}
+                  onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
+                  placeholder="Детали задачи..."
+                  rows={3}
+                  className="w-full bg-[#0e1621] border border-[#232e3c] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors resize-none"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-[#6c7883] mb-1.5">Исполнитель</label>
+                  <div className="relative">
+                    <select
+                      value={newTask.assignedToId}
+                      onChange={(e) => setNewTask({ ...newTask, assignedToId: e.target.value })}
+                      className="w-full bg-[#0e1621] border border-[#232e3c] rounded-xl px-4 py-2.5 text-sm text-white appearance-none focus:outline-none focus:border-[#3a73b8] transition-colors"
+                    >
+                      <option value="">Выбрать...</option>
+                      {DEMO_USERS.map((u) => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883] pointer-events-none" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-[#6c7883] mb-1.5">Приоритет</label>
+                  <div className="relative">
+                    <select
+                      value={newTask.priority}
+                      onChange={(e) => setNewTask({ ...newTask, priority: e.target.value as Task['priority'] })}
+                      className="w-full bg-[#0e1621] border border-[#232e3c] rounded-xl px-4 py-2.5 text-sm text-white appearance-none focus:outline-none focus:border-[#3a73b8] transition-colors"
+                    >
+                      <option value="low">🟢 Низкий</option>
+                      <option value="medium">🟡 Средний</option>
+                      <option value="high">🟠 Высокий</option>
+                      <option value="critical">🔴 Срочно</option>
+                    </select>
+                    <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883] pointer-events-none" />
+                  </div>
                 </div>
               </div>
 
-              {/* Status Actions */}
-              {order.status === 'pending' && canCreateOrders && (
-                <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
-                  <div className="flex space-x-2">
-                    <Button
-                      size="sm"
-                      onClick={() => handleStatusChange(order.id, 'approved')}
-                    >
-                      Утвердить
-                    </Button>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={() => handleStatusChange(order.id, 'rejected')}
-                    >
-                      Отклонить
-                    </Button>
-                  </div>
+              <div>
+                <label className="block text-xs text-[#6c7883] mb-1.5">Дедлайн</label>
+                <input
+                  type="date"
+                  value={newTask.dueDate}
+                  onChange={(e) => setNewTask({ ...newTask, dueDate: e.target.value })}
+                  className="w-full bg-[#0e1621] border border-[#232e3c] rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-[#3a73b8] transition-colors"
+                />
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-[#232e3c] flex gap-3">
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-[#6c7883] bg-[#232e3c] hover:bg-[#2b3a4c] transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={handleCreateTask}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-[#3a73b8] hover:bg-[#4a83c8] transition-colors"
+              >
+                Создать
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === Complete Task Modal === */}
+      {showCompleteModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setShowCompleteModal(null)}>
+          <div
+            className="bg-[#17212b] border border-[#232e3c] rounded-2xl w-full max-w-sm overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-[#232e3c]">
+              <h3 className="text-base font-semibold text-white">Завершить задачу</h3>
+              <p className="text-xs text-[#6c7883] mt-1">{showCompleteModal.title}</p>
+            </div>
+
+            <div className="p-5">
+              <label className="block text-xs text-[#6c7883] mb-1.5">Что было сделано? (необязательно)</label>
+              <textarea
+                autoFocus
+                value={completionNote}
+                onChange={(e) => setCompletionNote(e.target.value)}
+                placeholder="Опишите результат..."
+                rows={3}
+                className="w-full bg-[#0e1621] border border-[#232e3c] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors resize-none"
+              />
+            </div>
+
+            <div className="px-5 py-4 border-t border-[#232e3c] flex gap-3">
+              <button
+                onClick={() => setShowCompleteModal(null)}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-[#6c7883] bg-[#232e3c] hover:bg-[#2b3a4c] transition-colors"
+              >
+                Отмена
+              </button>
+              <button
+                onClick={submitCompletion}
+                className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-500 transition-colors"
+              >
+                ✓ Выполнено
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* === View Task Modal === */}
+      {selectedTask && (
+        <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4" onClick={() => setSelectedTask(null)}>
+          <div
+            className="bg-[#17212b] border border-[#232e3c] rounded-2xl w-full max-w-md overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between px-5 py-4 border-b border-[#232e3c]">
+              <div className="flex items-center gap-2">
+                {React.createElement(STATUS_CONFIG[selectedTask.status].icon, {
+                  className: `w-5 h-5 ${STATUS_CONFIG[selectedTask.status].color}`,
+                })}
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-lg ${STATUS_CONFIG[selectedTask.status].bg} ${STATUS_CONFIG[selectedTask.status].color}`}>
+                  {STATUS_CONFIG[selectedTask.status].label}
+                </span>
+              </div>
+              <button onClick={() => setSelectedTask(null)} className="text-[#6c7883] hover:text-white transition-colors">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div>
+                <h3 className="text-base font-semibold text-white mb-2">{selectedTask.title}</h3>
+                <p className="text-sm text-[#adb5bd]">{selectedTask.description}</p>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div className="bg-[#0e1621] rounded-xl p-3">
+                  <p className="text-[10px] text-[#6c7883] uppercase mb-1">Исполнитель</p>
+                  <p className="text-white text-xs font-medium">{selectedTask.assignedTo.name}</p>
+                </div>
+                <div className="bg-[#0e1621] rounded-xl p-3">
+                  <p className="text-[10px] text-[#6c7883] uppercase mb-1">Автор</p>
+                  <p className="text-white text-xs font-medium">{selectedTask.createdBy.name}</p>
+                </div>
+                <div className="bg-[#0e1621] rounded-xl p-3">
+                  <p className="text-[10px] text-[#6c7883] uppercase mb-1">Приоритет</p>
+                  <p className={`text-xs font-medium ${PRIORITY_CONFIG[selectedTask.priority].color}`}>
+                    {PRIORITY_CONFIG[selectedTask.priority].label}
+                  </p>
+                </div>
+                <div className="bg-[#0e1621] rounded-xl p-3">
+                  <p className="text-[10px] text-[#6c7883] uppercase mb-1">Дедлайн</p>
+                  <p className={`text-xs font-medium ${isOverdue(selectedTask.dueDate) && selectedTask.status !== 'completed' ? 'text-red-400' : 'text-white'}`}>
+                    {selectedTask.dueDate
+                      ? new Date(selectedTask.dueDate).toLocaleDateString('ru-RU')
+                      : '—'}
+                  </p>
+                </div>
+              </div>
+
+              {selectedTask.completionNote && (
+                <div className="bg-green-500/5 border border-green-500/20 rounded-xl p-3">
+                  <p className="text-[10px] text-green-400 uppercase mb-1">Отчёт о выполнении</p>
+                  <p className="text-sm text-[#adb5bd]">{selectedTask.completionNote}</p>
                 </div>
               )}
             </div>
-          ))}
-        </div>
 
-        {/* Empty State */}
-        {filteredOrders.length === 0 && (
-          <div className="text-center py-12">
-            <FileText className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-              Приказы не найдены
-            </h3>
-            <p className="text-gray-500 dark:text-gray-400 mb-4">
-              {searchQuery ? 'Попробуйте изменить поисковый запрос' : 'Создайте первый приказ'}
-            </p>
-            {!searchQuery && canCreateOrders && (
-              <Button onClick={() => setShowCreateModal(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                Создать приказ
-              </Button>
-            )}
-          </div>
-        )}
-
-        {/* Create Order Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
-                Создать приказ
-              </h3>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Название приказа
-                  </label>
-                  <input
-                    type="text"
-                    value={newOrderData.title}
-                    onChange={(e) => setNewOrderData({...newOrderData, title: e.target.value})}
-                    placeholder="Введите название приказа..."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Описание
-                  </label>
-                  <textarea
-                    value={newOrderData.description}
-                    onChange={(e) => setNewOrderData({...newOrderData, description: e.target.value})}
-                    placeholder="Подробное описание приказа..."
-                    rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Приоритет
-                    </label>
-                    <select
-                      value={newOrderData.priority}
-                      onChange={(e) => setNewOrderData({...newOrderData, priority: e.target.value as any})}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    >
-                      <option value="low">Низкий</option>
-                      <option value="medium">Средний</option>
-                      <option value="high">Высокий</option>
-                      <option value="urgent">Срочный</option>
-                    </select>
-                  </div>
-                  
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                      Категория
-                    </label>
-                    <input
-                      type="text"
-                      value={newOrderData.category}
-                      onChange={(e) => setNewOrderData({...newOrderData, category: e.target.value})}
-                      placeholder="Категория приказа..."
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Исполнители (через запятую)
-                  </label>
-                  <input
-                    type="text"
-                    value={newOrderData.assignedTo}
-                    onChange={(e) => setNewOrderData({...newOrderData, assignedTo: e.target.value})}
-                    placeholder="IT Отдел, Административный отдел..."
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Срок исполнения
-                  </label>
-                  <input
-                    type="date"
-                    value={newOrderData.deadline}
-                    onChange={(e) => setNewOrderData({...newOrderData, deadline: e.target.value})}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                  />
-                </div>
-              </div>
-              
-              <div className="flex space-x-3 mt-6">
-                <Button 
-                  variant="secondary" 
-                  className="flex-1"
-                  onClick={() => setShowCreateModal(false)}
-                >
-                  Отмена
-                </Button>
-                <Button 
-                  className="flex-1"
-                  onClick={handleCreateOrder}
-                >
-                  Создать приказ
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* View Order Modal */}
-        {selectedOrder && (
-          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-6 w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                  {selectedOrder.number}
-                </h3>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSelectedOrder(null)}
-                >
-                  ✕
-                </Button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
-                    {selectedOrder.title}
-                  </h4>
-                  <p className="text-gray-600 dark:text-gray-400">
-                    {selectedOrder.description}
-                  </p>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="font-medium text-gray-900 dark:text-white">Статус:</span>
-                    <span className={`ml-2 inline-flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(selectedOrder.status)}`}>
-                      {getStatusIcon(selectedOrder.status)}
-                      <span>{getStatusName(selectedOrder.status)}</span>
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-900 dark:text-white">Приоритет:</span>
-                    <span className="ml-2 capitalize">{selectedOrder.priority}</span>
-                  </div>
-                  <div>
-                    <span className="font-medium text-gray-900 dark:text-white">Создан:</span>
-                    <span className="ml-2">{selectedOrder.createdAt}</span>
-                  </div>
-                  {selectedOrder.deadline && (
-                    <div>
-                      <span className="font-medium text-gray-900 dark:text-white">Срок:</span>
-                      <span className="ml-2">{selectedOrder.deadline}</span>
-                    </div>
-                  )}
-                </div>
-                
-                <div>
-                  <span className="font-medium text-gray-900 dark:text-white">Исполнители:</span>
-                  <p className="mt-1 text-gray-600 dark:text-gray-400">
-                    {selectedOrder.assignedTo.join(', ')}
-                  </p>
-                </div>
-                
-                {selectedOrder.attachments && selectedOrder.attachments.length > 0 && (
-                  <div>
-                    <span className="font-medium text-gray-900 dark:text-white">Вложения:</span>
-                    <ul className="mt-1 space-y-1">
-                      {selectedOrder.attachments.map((file, index) => (
-                        <li key={index} className="flex items-center space-x-2 text-sm text-blue-600 dark:text-blue-400">
-                          <FileText className="w-4 h-4" />
-                          <span>{file}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
+            {selectedTask.status !== 'completed' && (
+              <div className="px-5 py-4 border-t border-[#232e3c] flex gap-3">
+                {selectedTask.status === 'todo' && (
+                  <button
+                    onClick={() => {
+                      handleStartTask(selectedTask.id);
+                      setSelectedTask(null);
+                    }}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-blue-600 hover:bg-blue-500 transition-colors"
+                  >
+                    Взять в работу
+                  </button>
+                )}
+                {selectedTask.status === 'in_progress' && (
+                  <button
+                    onClick={() => {
+                      setSelectedTask(null);
+                      handleCompleteTask(selectedTask);
+                    }}
+                    className="flex-1 py-2.5 rounded-xl text-sm font-medium text-white bg-green-600 hover:bg-green-500 transition-colors"
+                  >
+                    ✓ Завершить
+                  </button>
                 )}
               </div>
-            </div>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </MainLayout>
   );
 };

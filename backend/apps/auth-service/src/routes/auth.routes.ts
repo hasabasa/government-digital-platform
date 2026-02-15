@@ -12,6 +12,16 @@ const authController = new AuthController();
 
 // Public routes
 router.post(
+  '/register',
+  authController.register
+);
+
+router.post(
+  '/login-email',
+  authController.loginByEmail
+);
+
+router.post(
   '/login',
   ValidationMiddleware.validateBody(LoginRequestSchema),
   authController.login

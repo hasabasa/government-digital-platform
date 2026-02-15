@@ -119,7 +119,18 @@ class ApiService {
     );
   }
 
-  // Auth endpoints
+  // Auth endpoints — email/password
+  async registerByEmail(data: { email: string; password: string; firstName: string; lastName: string }) {
+    const response = await this.api.post('/auth/register', data);
+    return response.data;
+  }
+
+  async loginByEmail(data: { email: string; password: string }) {
+    const response = await this.api.post('/auth/login-email', data);
+    return response.data;
+  }
+
+  // Auth endpoints — legacy ЭЦП
   async login(credentials: { email: string; digitalSignature: string }) {
     const response = await this.api.post('/auth/login', credentials);
     return response.data;
@@ -245,7 +256,7 @@ class ApiService {
   async getUserFiles(page = 1, limit = 20, type?: string) {
     const params = new URLSearchParams({ page: page.toString(), limit: limit.toString() });
     if (type) params.append('type', type);
-    
+
     const response = await this.api.get(`/files/user?${params}`);
     return response.data;
   }

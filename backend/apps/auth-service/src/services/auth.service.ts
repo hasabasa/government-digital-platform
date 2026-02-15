@@ -19,6 +19,155 @@ export class AuthService {
   private redis = DatabaseConnection.getInstance().getRedisClient();
 
   /**
+   * Register a new user with email and password
+   */
+  async register(data: {
+    email: string;
+    password: string;
+    firstName: string;
+    lastName: string;
+  }): Promise<{ userId: string }> {
+    try {
+      // Check if user already exists
+      const [existing] = await this.db
+        .select()
+        .from(users)
+        .where(eq(users.email, data.email))
+        .limit(1);
+
+      if (existing) {
+        throw new Error('User with this email already exists');
+      }
+
+      // Hash password
+      const passwordHash = await CryptoUtils.hashPassword(data.password);
+
+      // Create user
+      const [newUser] = await this.db
+        .insert(users)
+        .values({
+          email: data.email,
+          passwordHash,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          role: 'employee',
+          status: 'active',
+        })
+        .returning({ id: users.id });
+
+      logger.info('User registered', { userId: newUser.id, email: data.email });
+
+      return { userId: newUser.id };
+    } catch (error) {
+      logger.error('Registration failed', { error: (error as Error).message });
+      throw error;
+    }
+  }
+
+  /**
+   * Login with email and password
+   */
+  async loginByEmail(
+    email: string,
+    password: string,
+    clientInfo: { ipAddress: string; userAgent: string }
+  ): Promise<LoginResponse> {
+    try {
+      const [user] = await this.db
+        .select()
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1);
+
+      if (!user) {
+        throw new Error('Invalid email or password');
+      }
+
+      if (!user.passwordHash) {
+        throw new Error('This account uses ЭЦП authentication');
+      }
+
+      if (user.status !== 'active') {
+        throw new Error(`User account is ${user.status}`);
+      }
+
+      const isValid = await CryptoUtils.comparePassword(password, user.passwordHash);
+      if (!isValid) {
+        throw new Error('Invalid email or password');
+      }
+
+      // Update last login
+      await this.db
+        .update(users)
+        .set({
+          lastLoginAt: new Date(),
+          isOnline: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(users.id, user.id));
+
+      // Create session (same as ЭЦП flow)
+      const sessionId = uuidv4();
+      const jwtPayload: Omit<JwtPayload, 'type'> = {
+        userId: user.id,
+        email: user.email,
+        role: user.role,
+        sessionId,
+      };
+
+      const accessToken = JwtUtils.generateAccessToken(jwtPayload);
+      const refreshToken = JwtUtils.generateRefreshToken(jwtPayload);
+
+      const expiresAt = new Date();
+      expiresAt.setTime(expiresAt.getTime() + config.security.sessionTimeout);
+
+      await this.db.insert(sessions).values({
+        id: sessionId,
+        userId: user.id,
+        accessToken,
+        refreshToken,
+        expiresAt,
+        ipAddress: clientInfo.ipAddress,
+        userAgent: clientInfo.userAgent,
+        isActive: true,
+      });
+
+      await this.redis.setEx(
+        `${config.redis.sessionPrefix}${sessionId}`,
+        config.security.sessionTimeout / 1000,
+        JSON.stringify({
+          userId: user.id,
+          sessionId,
+          accessToken,
+          refreshToken,
+        })
+      );
+
+      logger.info('User logged in by email', {
+        userId: user.id,
+        email: user.email,
+        sessionId,
+      });
+
+      return {
+        accessToken,
+        refreshToken,
+        expiresIn: config.security.sessionTimeout / 1000,
+        user: {
+          id: user.id,
+          email: user.email,
+          firstName: user.firstName,
+          lastName: user.lastName,
+          role: user.role,
+        },
+      };
+    } catch (error) {
+      logger.error('Email login failed', { error: (error as Error).message });
+      throw error;
+    }
+  }
+
+  /**
    * Authenticate user with digital signature
    */
   async login(loginData: LoginRequest, clientInfo: {

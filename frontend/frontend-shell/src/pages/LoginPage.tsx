@@ -2,194 +2,280 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../stores/auth.store';
 import { apiService } from '../services/api.service';
-import { ECPSelector } from '../components/auth/ECPSelector';
-import { EGovMobileAuth } from '../components/auth/EGovMobileAuth';
-import { Certificate } from '../services/ncalayer.service';
-import { Shield, Smartphone, Monitor } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, ArrowRight, UserPlus, LogIn, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 
-type AuthMethod = 'ecp' | 'mobile';
+type AuthTab = 'login' | 'register';
+
+// === Быстрые аккаунты (demo) ===
+const DEMO_ACCOUNTS = [
+  {
+    id: '1',
+    email: 'Hasenhankazimov@gmail.com',
+    firstName: 'Хасенхан',
+    lastName: 'Казимов',
+    role: 'admin',
+    position: 'Управляющий партнёр',
+    initials: 'ХК',
+    color: 'from-blue-500 to-purple-600',
+  },
+  {
+    id: '2',
+    email: 'hamitov.adil04@gmail.com',
+    firstName: 'Адиль',
+    lastName: 'Хамитов',
+    role: 'admin',
+    position: 'Партнёр',
+    initials: 'АХ',
+    color: 'from-emerald-500 to-teal-600',
+  },
+  {
+    id: '3',
+    email: 'azamatbekkhaliev@gmail.com',
+    firstName: 'Азамат',
+    lastName: 'Бекхалиев',
+    role: 'admin',
+    position: 'Партнёр',
+    initials: 'АБ',
+    color: 'from-orange-500 to-red-600',
+  },
+  {
+    id: '4',
+    email: 'makazanalpamys@gmail.com',
+    firstName: 'Алпамыс',
+    lastName: 'Мақажан',
+    role: 'employee',
+    position: 'Разработчик',
+    initials: 'АМ',
+    color: 'from-cyan-500 to-blue-600',
+  },
+];
 
 export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
-  const { setAuth, setLoading, setError, isLoading, error } = useAuthStore();
-  const [authMethod, setAuthMethod] = useState<AuthMethod>('ecp');
+  const { setAuth, setLoading, isLoading } = useAuthStore();
 
-  // Временный быстрый вход для тестирования
-  const handleQuickLogin = () => {
+  const [tab, setTab] = useState<AuthTab>('login');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password) {
+      toast.error('Заполните email и пароль');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await apiService.loginByEmail({ email, password });
+      const { accessToken, refreshToken, user } = response.data;
+      setAuth(user, accessToken, refreshToken);
+      toast.success(`Добро пожаловать, ${user.firstName}!`);
+      navigate('/');
+    } catch (error: any) {
+      const msg = error.response?.data?.error || 'Ошибка входа';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !password || !firstName || !lastName) {
+      toast.error('Заполните все поля');
+      return;
+    }
+    if (password.length < 6) {
+      toast.error('Пароль минимум 6 символов');
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await apiService.registerByEmail({ email, password, firstName, lastName });
+      toast.success('Регистрация успешна! Входим...');
+
+      const response = await apiService.loginByEmail({ email, password });
+      const { accessToken, refreshToken, user } = response.data;
+      setAuth(user, accessToken, refreshToken);
+      navigate('/');
+    } catch (error: any) {
+      const msg = error.response?.data?.error || 'Ошибка регистрации';
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleQuickLogin = (account: typeof DEMO_ACCOUNTS[0]) => {
     const mockUser = {
-      id: '1',
-      email: 'test@gov.kz',
-      firstName: 'Асылбек',
-      lastName: 'Нурланов',
-      role: 'minister',
-      organizationId: '1',
-      position: 'Министр финансов РК',
+      id: account.id,
+      email: account.email,
+      firstName: account.firstName,
+      lastName: account.lastName,
+      role: account.role,
+      position: account.position,
       avatar: undefined,
-      isOnline: true
+      isOnline: true,
     };
-    
     setAuth(mockUser, 'mock-token', 'mock-refresh-token');
-    toast.success('Успешный вход в систему!');
-    navigate('/dashboard');
+    toast.success(`Добро пожаловать, ${account.firstName}!`);
+    navigate('/');
   };
-
-  const handleCertificateSelect = async (certificate: Certificate, signature: string) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Отправляем данные ЭЦП на сервер для аутентификации
-      const response = await apiService.loginWithECP({
-        certificate: {
-          id: certificate.id,
-          subjectName: certificate.subjectName,
-          issuerName: certificate.issuerName,
-          serialNumber: certificate.serialNumber,
-          validFrom: certificate.validFrom,
-          validTo: certificate.validTo,
-          iin: certificate.iin,
-          fullName: certificate.fullName,
-          organization: certificate.organization,
-          position: certificate.position,
-          email: certificate.email
-        },
-        signature,
-        timestamp: Date.now()
-      });
-
-      const { user, token, refreshToken } = response.data;
-      setAuth(user, token, refreshToken);
-      
-      toast.success(`Добро пожаловать, ${certificate.fullName}!`);
-      navigate('/');
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Ошибка аутентификации по ЭЦП';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleMobileAuthSuccess = async (userData: any) => {
-    setLoading(true);
-    setError(null);
-
-    try {
-      // Отправляем данные мобильной аутентификации на сервер
-      const response = await apiService.loginWithEGovMobile(userData);
-      
-      const { user, token, refreshToken } = response.data;
-      setAuth(user, token, refreshToken);
-      
-      toast.success(`Добро пожаловать, ${userData.fullName}!`);
-      navigate('/');
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Ошибка аутентификации через eGov Mobile';
-      setError(errorMessage);
-      toast.error(errorMessage);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleAuthMethodCancel = () => {
-    setError(null);
-  };
-
-
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/5 via-white to-secondary/5 dark:from-gray-900 dark:via-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        {/* Logo and title */}
-        <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-2xl mb-4">
-            <Shield className="w-8 h-8 text-white" />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-            Платформа госслужащих
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400">
-            Выберите способ входа в систему
-          </p>
+    <div className="min-h-screen bg-[#0e1621] flex items-center justify-center p-4">
+      {/* Background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
+        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
+      </div>
+
+      <div className="w-full max-w-sm relative z-10">
+        {/* Logo */}
+        <div className="text-center mb-6">
+          <img
+            src={new URL('../assets/logo-white.svg', import.meta.url).href}
+            alt="Cube Demper"
+            className="h-14 mx-auto mb-3"
+          />
+          <p className="text-xs text-[#6c7883]">Платформа управления бизнесом</p>
         </div>
 
-        {/* Временная кнопка для тестирования */}
-        <div className="mb-6 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-          <p className="text-sm text-yellow-700 dark:text-yellow-300 mb-3 text-center">
-            🧪 Режим тестирования - быстрый вход без ЭЦП
-          </p>
+        {/* Tabs */}
+        <div className="flex bg-[#17212b] rounded-xl p-1 mb-5 border border-[#232e3c]">
           <button
-            onClick={handleQuickLogin}
-            className="w-full bg-yellow-500 hover:bg-yellow-600 text-white font-medium py-3 px-4 rounded-lg transition-colors"
+            onClick={() => setTab('login')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${tab === 'login'
+              ? 'bg-[#3a73b8] text-white shadow-md'
+              : 'text-[#6c7883] hover:text-white'
+              }`}
           >
-            🚀 Войти как Министр финансов (Тест)
+            <LogIn className="w-4 h-4" />
+            Вход
+          </button>
+          <button
+            onClick={() => setTab('register')}
+            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-all ${tab === 'register'
+              ? 'bg-[#3a73b8] text-white shadow-md'
+              : 'text-[#6c7883] hover:text-white'
+              }`}
+          >
+            <UserPlus className="w-4 h-4" />
+            Регистрация
           </button>
         </div>
 
-        {/* Переключатель методов аутентификации */}
-        <div className="mb-6">
-          <div className="flex bg-gray-100 dark:bg-gray-700 rounded-lg p-1">
+        {/* Form */}
+        <form onSubmit={tab === 'login' ? handleLogin : handleRegister} className="space-y-3">
+          {tab === 'register' && (
+            <>
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883]" />
+                <input
+                  type="text"
+                  value={firstName}
+                  onChange={(e) => setFirstName(e.target.value)}
+                  placeholder="Имя"
+                  className="w-full bg-[#17212b] border border-[#232e3c] rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors"
+                />
+              </div>
+              <div className="relative">
+                <User className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883]" />
+                <input
+                  type="text"
+                  value={lastName}
+                  onChange={(e) => setLastName(e.target.value)}
+                  placeholder="Фамилия"
+                  className="w-full bg-[#17212b] border border-[#232e3c] rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors"
+                />
+              </div>
+            </>
+          )}
+
+          <div className="relative">
+            <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883]" />
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Email"
+              className="w-full bg-[#17212b] border border-[#232e3c] rounded-xl pl-10 pr-4 py-3 text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors"
+            />
+          </div>
+
+          <div className="relative">
+            <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883]" />
+            <input
+              type={showPassword ? 'text' : 'password'}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder="Пароль"
+              className="w-full bg-[#17212b] border border-[#232e3c] rounded-xl pl-10 pr-10 py-3 text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors"
+            />
             <button
-              onClick={() => setAuthMethod('ecp')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                authMethod === 'ecp'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-              }`}
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[#6c7883] hover:text-white transition-colors"
             >
-              <Monitor className="w-4 h-4" />
-              ЭЦП на ПК
-            </button>
-            <button
-              onClick={() => setAuthMethod('mobile')}
-              className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                authMethod === 'mobile'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              <Smartphone className="w-4 h-4" />
-              eGov Mobile
+              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
             </button>
           </div>
+
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-2 bg-[#3a73b8] hover:bg-[#4a83c8] text-white font-medium py-3 rounded-xl transition-all active:scale-[0.98] disabled:opacity-50"
+          >
+            {isLoading ? (
+              <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+            ) : (
+              <>
+                {tab === 'login' ? 'Войти' : 'Создать аккаунт'}
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Divider */}
+        <div className="flex items-center gap-3 my-4">
+          <div className="flex-1 h-px bg-[#232e3c]" />
+          <span className="text-xs text-[#6c7883]">быстрый вход</span>
+          <div className="flex-1 h-px bg-[#232e3c]" />
         </div>
 
-        {/* Форма аутентификации */}
-        {authMethod === 'ecp' ? (
-          <ECPSelector 
-            onCertificateSelect={handleCertificateSelect}
-            isLoading={isLoading}
-          />
-        ) : (
-          <EGovMobileAuth
-            onAuthSuccess={handleMobileAuthSuccess}
-            onCancel={handleAuthMethodCancel}
-            isLoading={isLoading}
-          />
-        )}
-
-        {/* Error message */}
-        {error && (
-          <div className="mt-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-3">
-            <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
-          </div>
-        )}
+        {/* Quick Login Accounts */}
+        <div className="grid grid-cols-2 gap-2">
+          {DEMO_ACCOUNTS.map((account) => (
+            <button
+              key={account.id}
+              onClick={() => handleQuickLogin(account)}
+              className="flex items-center gap-2.5 bg-[#17212b] border border-[#232e3c] hover:border-[#3a73b8]/50 rounded-xl px-3 py-2.5 transition-all active:scale-[0.97] group"
+            >
+              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${account.color} flex items-center justify-center flex-shrink-0`}>
+                <span className="text-white text-xs font-bold">{account.initials}</span>
+              </div>
+              <div className="text-left min-w-0">
+                <p className="text-xs font-medium text-white truncate group-hover:text-blue-300 transition-colors">
+                  {account.firstName}
+                </p>
+                <p className="text-[10px] text-[#6c7883] truncate">
+                  {account.position}
+                </p>
+              </div>
+            </button>
+          ))}
+        </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
-          <p>© 2024 Платформа госслужащих</p>
-          <p className="mt-1">
-            <a href="#" className="hover:text-primary transition-colors">
-              Техническая поддержка
-            </a>
-            {' • '}
-            <a href="#" className="hover:text-primary transition-colors">
-              Документация
-            </a>
-          </p>
+        <div className="mt-6 text-center text-xs text-[#4a5568]">
+          <p>© 2025 Cube Business OS</p>
         </div>
       </div>
     </div>

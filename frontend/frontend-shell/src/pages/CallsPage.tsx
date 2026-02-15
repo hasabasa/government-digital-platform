@@ -1,486 +1,263 @@
 import React, { useState } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
-import { 
-  Phone, 
-  Video, 
+import {
+  Phone,
+  Video,
   PhoneIncoming,
   PhoneOutgoing,
   PhoneMissed,
-  Calendar,
-  Clock,
-  Users,
+  Search,
   Mic,
   MicOff,
   VideoOff,
-  Share,
-  MoreVertical
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
 import { useAuthStore } from '../stores/auth.store';
 import toast from 'react-hot-toast';
 
-interface Call {
+// === Types ===
+interface CallRecord {
   id: string;
   type: 'audio' | 'video';
   status: 'completed' | 'missed' | 'declined';
   direction: 'incoming' | 'outgoing';
-  participant: string;
-  participants?: string[];
+  contact: string;
   duration?: string;
   timestamp: string;
-  isGroup?: boolean;
 }
+
+// === Demo Data ===
+const CONTACTS = [
+  { id: '1', name: 'Хасенхан Казимов', role: 'Управляющий партнёр', isOnline: true },
+  { id: '2', name: 'Адиль Хамитов', role: 'Партнёр', isOnline: true },
+  { id: '3', name: 'Азамат Бекхалиев', role: 'Партнёр', isOnline: false },
+  { id: '4', name: 'Алпамыс Мақажан', role: 'Разработчик', isOnline: true },
+];
+
+const CALL_HISTORY: CallRecord[] = [
+  { id: '1', type: 'video', status: 'completed', direction: 'outgoing', contact: 'Адиль Хамитов', duration: '12:34', timestamp: 'Сегодня, 15:30' },
+  { id: '2', type: 'audio', status: 'missed', direction: 'incoming', contact: 'Азамат Бекхалиев', timestamp: 'Сегодня, 14:00' },
+  { id: '3', type: 'audio', status: 'completed', direction: 'incoming', contact: 'Алпамыс Мақажан', duration: '5:12', timestamp: 'Сегодня, 11:00' },
+  { id: '4', type: 'video', status: 'completed', direction: 'outgoing', contact: 'Хасенхан Казимов', duration: '45:07', timestamp: 'Вчера, 16:00' },
+  { id: '5', type: 'audio', status: 'declined', direction: 'outgoing', contact: 'Азамат Бекхалиев', timestamp: 'Вчера, 10:20' },
+];
 
 const CallsPage: React.FC = () => {
   const { user } = useAuthStore();
-  const [activeTab, setActiveTab] = useState<'recent' | 'schedule' | 'ongoing'>('recent');
-  const [inCall, setInCall] = useState(false);
-  const [callData, setCallData] = useState<any>(null);
+  const [tab, setTab] = useState<'history' | 'contacts'>('history');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCall, setActiveCall] = useState<{ contact: string; type: 'audio' | 'video' } | null>(null);
   const [isMuted, setIsMuted] = useState(false);
-  const [isVideoEnabled, setIsVideoEnabled] = useState(true);
+  const [isVideoOff, setIsVideoOff] = useState(false);
 
-  // Mock data
-  const recentCalls: Call[] = [
-    {
-      id: '1',
-      type: 'video',
-      status: 'completed',
-      direction: 'outgoing',
-      participant: 'Иван Иванов',
-      duration: '25:30',
-      timestamp: '10:30',
-    },
-    {
-      id: '2',
-      type: 'audio',
-      status: 'missed',
-      direction: 'incoming',
-      participant: 'Мария Петрова',
-      timestamp: '09:15',
-    },
-    {
-      id: '3',
-      type: 'video',
-      status: 'completed',
-      direction: 'incoming',
-      participant: 'IT Отдел',
-      participants: ['Петр Сидоров', 'Анна Козлова', 'Михаил Иванов'],
-      duration: '1:15:45',
-      timestamp: 'Вчера',
-      isGroup: true,
-    },
-    {
-      id: '4',
-      type: 'audio',
-      status: 'completed',
-      direction: 'outgoing',
-      participant: 'Алексей Николаев',
-      duration: '12:45',
-      timestamp: 'Вчера',
-    },
-    {
-      id: '5',
-      type: 'video',
-      status: 'declined',
-      direction: 'outgoing',
-      participant: 'Планерка руководства',
-      timestamp: '2 дня назад',
-      isGroup: true,
-    },
-  ];
-
-  const scheduledCalls = [
-    {
-      id: '1',
-      title: 'Еженедельная планерка',
-      participants: ['Иван Иванов', 'Мария Петрова', 'Петр Сидоров'],
-      time: '14:00',
-      date: 'Сегодня',
-      type: 'video',
-    },
-    {
-      id: '2',
-      title: 'Обсуждение проекта',
-      participants: ['Анна Козлова'],
-      time: '16:30',
-      date: 'Завтра',
-      type: 'audio',
-    },
-  ];
-
-  const handleStartCall = (type: 'audio' | 'video', participant?: string) => {
-    console.log(`Начать ${type} звонок`, participant ? `с ${participant}` : '');
-    
-    setCallData({
-      type,
-      participant: participant || 'Тестовый контакт',
-      startTime: new Date().toLocaleTimeString(),
-    });
-    setInCall(true);
-    
-    toast.success(`Начинаем ${type === 'video' ? 'видео' : 'аудио'} звонок`);
+  const handleStartCall = (contact: string, type: 'audio' | 'video') => {
+    setActiveCall({ contact, type });
+    toast.success(`Звоним: ${contact}`);
   };
 
   const handleEndCall = () => {
-    setInCall(false);
-    setCallData(null);
+    toast.success(`Звонок завершён`);
+    setActiveCall(null);
     setIsMuted(false);
-    setIsVideoEnabled(true);
-    toast.success('Звонок завершен');
+    setIsVideoOff(false);
   };
 
-  const handleScheduleCall = () => {
-    console.log('Запланировать звонок');
-    toast.success('Звонок запланирован');
+  const getCallIcon = (call: CallRecord) => {
+    if (call.status === 'missed') return <PhoneMissed className="w-4 h-4 text-red-400" />;
+    if (call.direction === 'incoming') return <PhoneIncoming className="w-4 h-4 text-green-400" />;
+    return <PhoneOutgoing className="w-4 h-4 text-blue-400" />;
   };
 
-  const getCallIcon = (call: Call) => {
-    if (call.status === 'missed') {
-      return <PhoneMissed className="w-4 h-4 text-red-500" />;
-    }
-    
-    if (call.direction === 'incoming') {
-      return <PhoneIncoming className="w-4 h-4 text-green-500" />;
-    }
-    
-    return <PhoneOutgoing className="w-4 h-4 text-blue-500" />;
-  };
+  const filteredHistory = CALL_HISTORY.filter((c) =>
+    c.contact.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const getCallStatusColor = (status: string) => {
-    switch (status) {
-      case 'completed':
-        return 'text-green-600';
-      case 'missed':
-        return 'text-red-600';
-      case 'declined':
-        return 'text-orange-600';
-      default:
-        return 'text-gray-600';
-    }
-  };
-
-  if (inCall) {
-    return (
-      <MainLayout>
-        <div className="h-[calc(100vh-4rem)] bg-gray-900 flex flex-col items-center justify-center relative">
-          {/* Call Header */}
-          <div className="absolute top-8 left-1/2 transform -translate-x-1/2 text-center text-white">
-            <h2 className="text-xl font-semibold mb-2">
-              {callData?.participant}
-            </h2>
-            <p className="text-sm opacity-80">
-              {callData?.type === 'video' ? 'Видеозвонок' : 'Аудиозвонок'} • {callData?.startTime}
-            </p>
-          </div>
-
-          {/* Video Area */}
-          {callData?.type === 'video' && (
-            <div className="flex-1 w-full max-w-4xl mx-auto p-8">
-              <div className="relative w-full h-full bg-gray-800 rounded-xl overflow-hidden">
-                {/* Main Video */}
-                <div className="w-full h-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-                  <div className="text-center text-white">
-                    <div className="w-32 h-32 bg-white/20 rounded-full flex items-center justify-center mb-4">
-                      <span className="text-4xl font-bold">
-                        {callData?.participant.charAt(0)}
-                      </span>
-                    </div>
-                    <p className="text-lg">{callData?.participant}</p>
-                  </div>
-                </div>
-
-                {/* Self Video */}
-                <div className="absolute bottom-4 right-4 w-48 h-36 bg-gray-700 rounded-lg overflow-hidden">
-                  <div className="w-full h-full bg-gradient-to-br from-green-500 to-blue-500 flex items-center justify-center">
-                    <div className="text-center text-white">
-                      <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mb-2">
-                        <span className="text-xl font-bold">
-                          {user?.firstName?.charAt(0)}
-                        </span>
-                      </div>
-                      <p className="text-sm">Вы</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Audio Call */}
-          {callData?.type === 'audio' && (
-            <div className="flex-1 flex items-center justify-center">
-              <div className="text-center text-white">
-                <div className="w-48 h-48 bg-white/10 rounded-full flex items-center justify-center mb-8">
-                  <span className="text-6xl font-bold">
-                    {callData?.participant.charAt(0)}
-                  </span>
-                </div>
-                <h3 className="text-2xl font-semibold mb-2">
-                  {callData?.participant}
-                </h3>
-                <p className="text-lg opacity-80">Аудиозвонок</p>
-              </div>
-            </div>
-          )}
-
-          {/* Call Controls */}
-          <div className="absolute bottom-8 left-1/2 transform -translate-x-1/2">
-            <div className="flex items-center space-x-4">
-              <Button
-                variant={isMuted ? 'danger' : 'secondary'}
-                size="lg"
-                onClick={() => setIsMuted(!isMuted)}
-                className="w-14 h-14 rounded-full"
-              >
-                {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
-              </Button>
-
-              {callData?.type === 'video' && (
-                <Button
-                  variant={isVideoEnabled ? 'secondary' : 'danger'}
-                  size="lg"
-                  onClick={() => setIsVideoEnabled(!isVideoEnabled)}
-                  className="w-14 h-14 rounded-full"
-                >
-                  {isVideoEnabled ? <Video className="w-6 h-6" /> : <VideoOff className="w-6 h-6" />}
-                </Button>
-              )}
-
-              <Button
-                variant="danger"
-                size="lg"
-                onClick={handleEndCall}
-                className="w-14 h-14 rounded-full"
-              >
-                <Phone className="w-6 h-6" />
-              </Button>
-
-              {callData?.type === 'video' && (
-                <Button
-                  variant="secondary"
-                  size="lg"
-                  className="w-14 h-14 rounded-full"
-                >
-                  <Share className="w-6 h-6" />
-                </Button>
-              )}
-
-              <Button
-                variant="secondary"
-                size="lg"
-                className="w-14 h-14 rounded-full"
-              >
-                <MoreVertical className="w-6 h-6" />
-              </Button>
-            </div>
-          </div>
-        </div>
-      </MainLayout>
-    );
-  }
+  const filteredContacts = CONTACTS.filter(
+    (c) =>
+      c.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      c.name !== `${user?.firstName} ${user?.lastName}`.trim()
+  );
 
   return (
     <MainLayout>
-      <div className="p-6">
+      <div className="h-full overflow-auto bg-[#0e1621]">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Звонки
-            </h1>
-            <p className="text-gray-600 dark:text-gray-400">
-              Управляйте звонками и видеоконференциями
-            </p>
-          </div>
-          <div className="flex space-x-2">
-            <Button 
-              variant="secondary"
-              onClick={() => handleStartCall('audio')}
+        <div className="bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-6 py-4">
+          <h1 className="text-xl font-semibold text-white mb-4">Звонки</h1>
+
+          {/* Tabs */}
+          <div className="flex gap-1 bg-[#0e1621] rounded-xl p-1">
+            <button
+              onClick={() => setTab('history')}
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${tab === 'history' ? 'bg-[#3a73b8] text-white' : 'text-[#6c7883] hover:text-white'
+                }`}
             >
-              <Phone className="w-4 h-4 mr-2" />
-              Аудиозвонок
-            </Button>
-            <Button onClick={() => handleStartCall('video')}>
-              <Video className="w-4 h-4 mr-2" />
-              Видеозвонок
-            </Button>
+              История
+            </button>
+            <button
+              onClick={() => setTab('contacts')}
+              className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${tab === 'contacts' ? 'bg-[#3a73b8] text-white' : 'text-[#6c7883] hover:text-white'
+                }`}
+            >
+              Контакты
+            </button>
           </div>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6">
-          <div className="flex space-x-1 bg-gray-100 dark:bg-gray-700 rounded-lg p-1 w-fit">
-            <button
-              onClick={() => setActiveTab('recent')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                activeTab === 'recent'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Недавние
-            </button>
-            <button
-              onClick={() => setActiveTab('schedule')}
-              className={`px-4 py-2 rounded-md text-sm font-medium transition-all ${
-                activeTab === 'schedule'
-                  ? 'bg-white dark:bg-gray-600 text-gray-900 dark:text-white shadow-sm'
-                  : 'text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white'
-              }`}
-            >
-              Запланированные
-            </button>
+        {/* Search */}
+        <div className="px-6 py-3">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883]" />
+            <input
+              type="text"
+              placeholder={tab === 'history' ? 'Поиск звонков...' : 'Поиск контактов...'}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#17212b] border border-[#232e3c] rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors"
+            />
           </div>
         </div>
 
         {/* Content */}
-        {activeTab === 'recent' && (
-          <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700">
-            <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                История звонков
-              </h3>
-            </div>
-            <div className="divide-y divide-gray-200 dark:divide-gray-700">
-              {recentCalls.map((call) => (
-                <div key={call.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-3">
-                      <div className="flex items-center space-x-2">
-                        {getCallIcon(call)}
-                        {call.type === 'video' ? (
-                          <Video className="w-4 h-4 text-gray-500" />
-                        ) : (
-                          <Phone className="w-4 h-4 text-gray-500" />
-                        )}
-                      </div>
-                      
-                      <div>
-                        <div className="flex items-center space-x-2">
-                          <p className="font-medium text-gray-900 dark:text-white">
-                            {call.participant}
-                          </p>
-                          {call.isGroup && (
-                            <Users className="w-4 h-4 text-gray-500" />
-                          )}
-                        </div>
-                        
-                        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                          <span className={getCallStatusColor(call.status)}>
-                            {call.status === 'completed' ? 'Завершен' :
-                             call.status === 'missed' ? 'Пропущен' : 'Отклонен'}
-                          </span>
-                          {call.duration && (
-                            <>
-                              <span>•</span>
-                              <span>{call.duration}</span>
-                            </>
-                          )}
-                          <span>•</span>
-                          <span>{call.timestamp}</span>
-                        </div>
-                        
-                        {call.participants && (
-                          <p className="text-xs text-gray-400 mt-1">
-                            Участники: {call.participants.join(', ')}
-                          </p>
-                        )}
-                      </div>
+        <div className="px-6 pb-6">
+          {tab === 'history' && (
+            <div className="space-y-1">
+              {filteredHistory.map((call) => (
+                <div
+                  key={call.id}
+                  className="flex items-center gap-3 bg-[#17212b] border border-[#232e3c] rounded-xl p-3 hover:border-[#3a73b8]/30 transition-colors"
+                >
+                  {/* Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-semibold text-white flex-shrink-0">
+                    {call.contact.split(' ').map((n) => n[0]).join('')}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{call.contact}</p>
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      {getCallIcon(call)}
+                      <span className="text-[11px] text-[#6c7883]">
+                        {call.type === 'video' ? 'Видео' : 'Аудио'}
+                        {call.duration && ` · ${call.duration}`}
+                      </span>
                     </div>
-                    
-                    <div className="flex space-x-2">
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleStartCall('audio', call.participant)}
-                      >
-                        <Phone className="w-4 h-4" />
-                      </Button>
-                      <Button 
-                        variant="ghost" 
-                        size="sm"
-                        onClick={() => handleStartCall('video', call.participant)}
-                      >
-                        <Video className="w-4 h-4" />
-                      </Button>
-                    </div>
+                  </div>
+
+                  {/* Time + actions */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-[10px] text-[#6c7883]">{call.timestamp}</span>
+                    <button
+                      onClick={() => handleStartCall(call.contact, 'audio')}
+                      className="p-1.5 text-[#6c7883] hover:text-green-400 rounded-lg hover:bg-green-500/10 transition-colors"
+                    >
+                      <Phone className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}
-            </div>
-          </div>
-        )}
 
-        {activeTab === 'schedule' && (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                Запланированные звонки
-              </h3>
-              <Button onClick={handleScheduleCall}>
-                <Calendar className="w-4 h-4 mr-2" />
-                Запланировать
-              </Button>
-            </div>
-            
-            {scheduledCalls.map((call) => (
-              <div
-                key={call.id}
-                className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 p-6"
-              >
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="font-semibold text-gray-900 dark:text-white mb-2">
-                      {call.title}
-                    </h4>
-                    <div className="flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400">
-                      <div className="flex items-center space-x-1">
-                        <Calendar className="w-4 h-4" />
-                        <span>{call.date}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Clock className="w-4 h-4" />
-                        <span>{call.time}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        {call.type === 'video' ? (
-                          <Video className="w-4 h-4" />
-                        ) : (
-                          <Phone className="w-4 h-4" />
-                        )}
-                        <span>{call.type === 'video' ? 'Видео' : 'Аудио'}</span>
-                      </div>
-                    </div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-2">
-                      Участники: {call.participants.join(', ')}
-                    </p>
-                  </div>
-                  
-                  <Button onClick={() => handleStartCall(call.type as any)}>
-                    Присоединиться
-                  </Button>
+              {filteredHistory.length === 0 && (
+                <div className="text-center py-12">
+                  <Phone className="w-10 h-10 text-[#6c7883]/30 mx-auto mb-3" />
+                  <p className="text-sm text-[#6c7883]">Нет звонков</p>
                 </div>
-              </div>
-            ))}
-            
-            {scheduledCalls.length === 0 && (
-              <div className="text-center py-12">
-                <Calendar className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Нет запланированных звонков
-                </h3>
-                <p className="text-gray-500 dark:text-gray-400 mb-4">
-                  Запланируйте звонок или видеоконференцию
-                </p>
-                <Button onClick={handleScheduleCall}>
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Запланировать звонок
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+
+          {tab === 'contacts' && (
+            <div className="space-y-1">
+              {filteredContacts.map((contact) => (
+                <div
+                  key={contact.id}
+                  className="flex items-center gap-3 bg-[#17212b] border border-[#232e3c] rounded-xl p-3 hover:border-[#3a73b8]/30 transition-colors"
+                >
+                  {/* Avatar */}
+                  <div className="relative flex-shrink-0">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-xs font-semibold text-white">
+                      {contact.name.split(' ').map((n) => n[0]).join('')}
+                    </div>
+                    {contact.isOnline && (
+                      <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#17212b]" />
+                    )}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-white truncate">{contact.name}</p>
+                    <p className="text-[11px] text-[#6c7883]">{contact.role}</p>
+                  </div>
+
+                  {/* Call buttons */}
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button
+                      onClick={() => handleStartCall(contact.name, 'audio')}
+                      className="p-2 text-[#6c7883] hover:text-green-400 rounded-lg hover:bg-green-500/10 transition-colors"
+                    >
+                      <Phone className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={() => handleStartCall(contact.name, 'video')}
+                      className="p-2 text-[#6c7883] hover:text-blue-400 rounded-lg hover:bg-blue-500/10 transition-colors"
+                    >
+                      <Video className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              ))}
+
+              {filteredContacts.length === 0 && (
+                <div className="text-center py-12">
+                  <Phone className="w-10 h-10 text-[#6c7883]/30 mx-auto mb-3" />
+                  <p className="text-sm text-[#6c7883]">Нет контактов</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* === Active Call Overlay === */}
+      {activeCall && (
+        <div className="fixed inset-0 z-50 bg-[#0e1621]/95 backdrop-blur-md flex flex-col items-center justify-center">
+          {/* Avatar */}
+          <div className="w-24 h-24 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-2xl font-bold text-white mb-4 animate-pulse">
+            {activeCall.contact.split(' ').map((n) => n[0]).join('')}
+          </div>
+          <h2 className="text-xl font-semibold text-white mb-1">{activeCall.contact}</h2>
+          <p className="text-sm text-[#6c7883] mb-10">
+            {activeCall.type === 'video' ? 'Видеозвонок' : 'Аудиозвонок'} · Вызов...
+          </p>
+
+          {/* Controls */}
+          <div className="flex items-center gap-6">
+            <button
+              onClick={() => setIsMuted(!isMuted)}
+              className={`w-14 h-14 rounded-full flex items-center justify-center transition-colors ${isMuted ? 'bg-red-500/20 text-red-400' : 'bg-[#232e3c] text-white hover:bg-[#2b3a4c]'
+                }`}
+            >
+              {isMuted ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+            </button>
+
+            {activeCall.type === 'video' && (
+              <button
+                onClick={() => setIsVideoOff(!isVideoOff)}
+                className={`w-14 h-14 rounded-full flex items-center justify-center transition-colors ${isVideoOff ? 'bg-red-500/20 text-red-400' : 'bg-[#232e3c] text-white hover:bg-[#2b3a4c]'
+                  }`}
+              >
+                {isVideoOff ? <VideoOff className="w-5 h-5" /> : <Video className="w-5 h-5" />}
+              </button>
+            )}
+
+            <button
+              onClick={handleEndCall}
+              className="w-14 h-14 rounded-full bg-red-500 text-white flex items-center justify-center hover:bg-red-600 transition-colors"
+            >
+              <Phone className="w-5 h-5 rotate-[135deg]" />
+            </button>
+          </div>
+        </div>
+      )}
     </MainLayout>
   );
 };

@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from 'react-query';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'react-hot-toast';
 import { useAuthStore } from './stores/auth.store';
 import { useThemeStore } from './stores/theme.store';
@@ -11,6 +11,8 @@ import ChatPage from './pages/ChatPage';
 import GroupsPage from './pages/GroupsPage';
 import CallsPage from './pages/CallsPage';
 import OrdersPage from './pages/OrdersPage';
+import { CashierPage } from './pages/CashierPage';
+import { FinanceDashboardPage } from './pages/FinanceDashboardPage';
 import { TestDashboard } from './pages/TestDashboard';
 import { WebSocketProvider } from './providers/WebSocketProvider';
 import './styles/globals.css';
@@ -28,7 +30,7 @@ const queryClient = new QueryClient({
 // Protected Route component
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
-  
+
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
@@ -39,7 +41,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
 // Public Route component (redirect to main if authenticated)
 const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated } = useAuthStore();
-  
+
   if (isAuthenticated) {
     return <Navigate to="/" replace />;
   }
@@ -50,10 +52,11 @@ const PublicRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 function App() {
   const { theme } = useThemeStore();
 
-  // Apply theme class to body on mount and theme change
+  // Always dark mode for Cube OS
   React.useEffect(() => {
     const root = document.documentElement;
-    if (theme === 'dark') {
+    root.classList.add('dark');
+    if (theme === 'dark' || true) {
       root.classList.add('dark');
     } else {
       root.classList.remove('dark');
@@ -74,7 +77,7 @@ function App() {
                 </PublicRoute>
               }
             />
-            
+
             {/* Test page - публичная для отладки */}
             <Route path="/test" element={<TestDashboard />} />
 
@@ -185,6 +188,26 @@ function App() {
                 <ProtectedRoute>
                   <WebSocketProvider>
                     <OrdersPage />
+                  </WebSocketProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/cashier"
+              element={
+                <ProtectedRoute>
+                  <WebSocketProvider>
+                    <CashierPage />
+                  </WebSocketProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/finance"
+              element={
+                <ProtectedRoute>
+                  <WebSocketProvider>
+                    <FinanceDashboardPage />
                   </WebSocketProvider>
                 </ProtectedRoute>
               }

@@ -13,7 +13,83 @@ export class AuthController {
   private authService = new AuthService();
 
   /**
-   * Login with digital signature
+   * Register new user
+   */
+  register = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { email, password, firstName, lastName } = req.body;
+
+      if (!email || !password || !firstName || !lastName) {
+        res.status(400).json({
+          success: false,
+          error: 'Email, password, firstName and lastName are required',
+        });
+        return;
+      }
+
+      if (password.length < 6) {
+        res.status(400).json({
+          success: false,
+          error: 'Password must be at least 6 characters',
+        });
+        return;
+      }
+
+      const result = await this.authService.register({ email, password, firstName, lastName });
+
+      res.status(201).json({
+        success: true,
+        data: result,
+        message: 'Registration successful',
+      });
+    } catch (error) {
+      logger.error('Register controller error', { error: (error as Error).message });
+      const status = (error as Error).message.includes('already exists') ? 409 : 500;
+      res.status(status).json({
+        success: false,
+        error: (error as Error).message || 'Registration failed',
+      });
+    }
+  };
+
+  /**
+   * Login with email and password
+   */
+  loginByEmail = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { email, password } = req.body;
+
+      if (!email || !password) {
+        res.status(400).json({
+          success: false,
+          error: 'Email and password are required',
+        });
+        return;
+      }
+
+      const clientInfo = {
+        ipAddress: req.ip || req.connection.remoteAddress || 'unknown',
+        userAgent: req.get('User-Agent') || 'unknown',
+      };
+
+      const result = await this.authService.loginByEmail(email, password, clientInfo);
+
+      res.status(200).json({
+        success: true,
+        data: result,
+        message: 'Login successful',
+      });
+    } catch (error) {
+      logger.error('Email login controller error', { error: (error as Error).message });
+      res.status(401).json({
+        success: false,
+        error: (error as Error).message || 'Login failed',
+      });
+    }
+  };
+
+  /**
+   * Login with digital signature (legacy)
    */
   login = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -34,7 +110,7 @@ export class AuthController {
       res.status(200).json(response);
     } catch (error) {
       logger.error('Login controller error', { error: (error as Error).message });
-      
+
       const response: ApiResponse<never> = {
         success: false,
         error: (error as Error).message || 'Login failed',
@@ -61,7 +137,7 @@ export class AuthController {
       res.status(200).json(response);
     } catch (error) {
       logger.error('Refresh controller error', { error: (error as Error).message });
-      
+
       const response: ApiResponse<never> = {
         success: false,
         error: (error as Error).message || 'Token refresh failed',
@@ -94,7 +170,7 @@ export class AuthController {
       res.status(200).json(response);
     } catch (error) {
       logger.error('Logout controller error', { error: (error as Error).message });
-      
+
       const response: ApiResponse<never> = {
         success: false,
         error: (error as Error).message || 'Logout failed',
@@ -135,7 +211,7 @@ export class AuthController {
       res.status(200).json(response);
     } catch (error) {
       logger.error('Get current user controller error', { error: (error as Error).message });
-      
+
       const response: ApiResponse<never> = {
         success: false,
         error: (error as Error).message || 'Failed to get user information',
@@ -168,7 +244,7 @@ export class AuthController {
       res.status(200).json(response);
     } catch (error) {
       logger.error('Logout all controller error', { error: (error as Error).message });
-      
+
       const response: ApiResponse<never> = {
         success: false,
         error: (error as Error).message || 'Failed to logout all sessions',

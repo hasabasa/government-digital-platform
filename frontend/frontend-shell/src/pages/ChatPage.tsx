@@ -1,23 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { MainLayout } from '../components/layout/MainLayout';
-import { 
-  MessageSquare, 
-  Phone, 
-  Video, 
-  Paperclip, 
+import {
   Send,
-  Plus,
   Search,
-  MoreVertical,
   Users,
-  Image,
-  File,
-  Mic,
-  Smile
+  Paperclip,
+  Phone,
+  Video,
+  ArrowLeft,
+  X,
+  Smile,
 } from 'lucide-react';
-import { Button } from '../components/ui/Button';
 import { useAuthStore } from '../stores/auth.store';
 
+// === Types ===
 interface Chat {
   id: string;
   name: string;
@@ -26,363 +22,347 @@ interface Chat {
   lastMessageTime: string;
   unreadCount: number;
   isOnline?: boolean;
-  avatar?: string;
-  participants?: number;
+  participants?: { id: string; name: string; role: string; isOnline: boolean }[];
 }
 
 interface Message {
   id: string;
   content: string;
-  type: 'text' | 'file' | 'image';
   sender: string;
   timestamp: string;
   isOwn: boolean;
-  fileUrl?: string;
-  fileName?: string;
-  fileSize?: number;
 }
+
+// === Demo Data ===
+const TEAM = [
+  { id: '1', name: 'Хасенхан Казимов', role: 'Управляющий партнёр', isOnline: true },
+  { id: '2', name: 'Адиль Хамитов', role: 'Партнёр', isOnline: true },
+  { id: '3', name: 'Азамат Бекхалиев', role: 'Партнёр', isOnline: false },
+  { id: '4', name: 'Алпамыс Мақажан', role: 'Разработчик', isOnline: true },
+];
+
+const DEMO_CHATS: Chat[] = [
+  {
+    id: '1',
+    name: 'Адиль Хамитов',
+    type: 'direct',
+    lastMessage: 'Отправил документы',
+    lastMessageTime: '10:30',
+    unreadCount: 2,
+    isOnline: true,
+  },
+  {
+    id: '2',
+    name: 'Команда Cube',
+    type: 'group',
+    lastMessage: 'Алпамыс: Деплой готов',
+    lastMessageTime: '09:45',
+    unreadCount: 3,
+    participants: TEAM,
+  },
+  {
+    id: '3',
+    name: 'Азамат Бекхалиев',
+    type: 'direct',
+    lastMessage: 'Хорошо, сделаю',
+    lastMessageTime: 'Вчера',
+    unreadCount: 0,
+    isOnline: false,
+  },
+  {
+    id: '4',
+    name: 'Алпамыс Мақажан',
+    type: 'direct',
+    lastMessage: 'Баг пофикшен',
+    lastMessageTime: 'Вчера',
+    unreadCount: 0,
+    isOnline: true,
+  },
+];
+
+const INITIAL_MESSAGES: Record<string, Message[]> = {
+  '1': [
+    { id: '1', content: 'Привет! Как продвигается отчёт?', sender: 'Хасенхан', timestamp: '10:00', isOwn: true },
+    { id: '2', content: 'Почти готово, осталось свести финансы', sender: 'Адиль', timestamp: '10:15', isOwn: false },
+    { id: '3', content: 'Отправил документы в общий канал', sender: 'Адиль', timestamp: '10:30', isOwn: false },
+  ],
+  '2': [
+    { id: '1', content: 'Всем привет! Новая версия задеплоена', sender: 'Алпамыс', timestamp: '09:00', isOwn: false },
+    { id: '2', content: 'Отлично, проверю сегодня', sender: 'Азамат', timestamp: '09:20', isOwn: false },
+    { id: '3', content: 'Деплой готов, можно тестить', sender: 'Алпамыс', timestamp: '09:45', isOwn: false },
+  ],
+  '3': [
+    { id: '1', content: 'Азамат, нужно обновить прайс', sender: 'Хасенхан', timestamp: '15:00', isOwn: true },
+    { id: '2', content: 'Хорошо, сделаю', sender: 'Азамат', timestamp: '15:30', isOwn: false },
+  ],
+  '4': [
+    { id: '1', content: 'Алпамыс, баг на странице логина', sender: 'Хасенхан', timestamp: '14:00', isOwn: true },
+    { id: '2', content: 'Баг пофикшен, проверь', sender: 'Алпамыс', timestamp: '14:20', isOwn: false },
+  ],
+};
 
 const ChatPage: React.FC = () => {
   const { user } = useAuthStore();
   const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
   const [messageText, setMessageText] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
+  const [messages, setMessages] = useState<Record<string, Message[]>>(INITIAL_MESSAGES);
+  const [showMembers, setShowMembers] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Mock data
-  const chats: Chat[] = [
-    {
-      id: '1',
-      name: 'Иван Иванов',
-      type: 'direct',
-      lastMessage: 'Отправил вам документы',
-      lastMessageTime: '10:30',
-      unreadCount: 2,
-      isOnline: true,
-    },
-    {
-      id: '2',
-      name: 'IT Отдел',
-      type: 'group',
-      lastMessage: 'Петр: Новое обновление системы',
-      lastMessageTime: '09:45',
-      unreadCount: 5,
-      participants: 12,
-    },
-    {
-      id: '3',
-      name: 'Мария Петрова',
-      type: 'direct',
-      lastMessage: 'Спасибо за информацию!',
-      lastMessageTime: 'Вчера',
-      unreadCount: 0,
-      isOnline: false,
-    },
-    {
-      id: '4',
-      name: 'Планерка руководства',
-      type: 'group',
-      lastMessage: 'Алексей: Встреча перенесена на завтра',
-      lastMessageTime: 'Вчера',
-      unreadCount: 1,
-      participants: 8,
-    },
-  ];
-
-  const messages: Message[] = [
-    {
-      id: '1',
-      content: 'Добро пожаловать в тестовый чат!',
-      type: 'text',
-      sender: 'Система',
-      timestamp: '10:00',
-      isOwn: false,
-    },
-    {
-      id: '2',
-      content: 'Здравствуйте! Проверяю функциональность чата.',
-      type: 'text',
-      sender: user?.fullName || 'Вы',
-      timestamp: '10:01',
-      isOwn: true,
-    },
-    {
-      id: '3',
-      content: 'budget_2024.xlsx',
-      type: 'file',
-      sender: 'Иван Иванов',
-      timestamp: '10:02',
-      isOwn: false,
-      fileUrl: '#',
-      fileName: 'budget_2024.xlsx',
-      fileSize: 2048576,
-    },
-    {
-      id: '4',
-      content: 'Отлично! Файл получен.',
-      type: 'text',
-      sender: user?.fullName || 'Вы',
-      timestamp: '10:03',
-      isOwn: true,
-    },
-  ];
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, selectedChat]);
 
   const handleSendMessage = () => {
-    if (!messageText.trim()) return;
-    
-    console.log('Отправка сообщения:', messageText);
-    // TODO: Implement actual message sending
+    if (!messageText.trim() || !selectedChat) return;
+
+    const newMsg: Message = {
+      id: String(Date.now()),
+      content: messageText,
+      sender: user?.firstName || 'Вы',
+      timestamp: new Date().toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }),
+      isOwn: true,
+    };
+
+    setMessages((prev) => ({
+      ...prev,
+      [selectedChat.id]: [...(prev[selectedChat.id] || []), newMsg],
+    }));
     setMessageText('');
   };
 
-  const handleFileUpload = () => {
-    console.log('Выбор файла для отправки');
-    // TODO: Implement file upload
-  };
-
-  const handleStartCall = (type: 'audio' | 'video') => {
-    console.log(`Начать ${type} звонок с:`, selectedChat?.name);
-    // TODO: Implement call functionality
-  };
-
-  const filteredChats = chats.filter(chat =>
-    chat.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredChats = DEMO_CHATS.filter((c) =>
+    c.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const currentMessages = selectedChat ? messages[selectedChat.id] || [] : [];
 
   return (
     <MainLayout>
-      <div className="flex h-[calc(100vh-4rem)]">
-        {/* Chat List Sidebar */}
-        <div className="w-80 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col">
+      <div className="flex h-full bg-[#0e1621]">
+        {/* === Chat List === */}
+        <div
+          className={`${selectedChat ? 'hidden md:flex' : 'flex'
+            } flex-col w-full md:w-80 lg:w-96 border-r border-[#232e3c] bg-[#17212b] flex-shrink-0`}
+        >
           {/* Header */}
-          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
-                Сообщения
-              </h2>
-              <Button variant="ghost" size="sm">
-                <Plus className="w-4 h-4" />
-              </Button>
-            </div>
-            
-            {/* Search */}
+          <div className="px-4 py-3 border-b border-[#232e3c]">
+            <h2 className="text-base font-semibold text-white mb-3">Чат</h2>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883]" />
               <input
                 type="text"
-                placeholder="Поиск чатов..."
+                placeholder="Поиск..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                className="w-full bg-[#0e1621] border border-[#232e3c] rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors"
               />
             </div>
           </div>
 
-          {/* Chat List */}
+          {/* Chat items */}
           <div className="flex-1 overflow-y-auto">
-            {filteredChats.map((chat) => (
-              <button
-                key={chat.id}
-                onClick={() => setSelectedChat(chat)}
-                className={`w-full p-4 text-left hover:bg-gray-50 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 ${
-                  selectedChat?.id === chat.id ? 'bg-blue-50 dark:bg-blue-900/30' : ''
-                }`}
-              >
-                <div className="flex items-center space-x-3">
-                  <div className="relative">
-                    <div className="w-12 h-12 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                      {chat.type === 'group' ? (
-                        <Users className="w-6 h-6" />
-                      ) : (
-                        chat.name.charAt(0)
-                      )}
+            {filteredChats.map((chat) => {
+              const initials = chat.type === 'group'
+                ? 'КМ'
+                : chat.name.split(' ').map((n) => n[0]).join('');
+
+              return (
+                <button
+                  key={chat.id}
+                  onClick={() => { setSelectedChat(chat); setShowMembers(false); }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors ${selectedChat?.id === chat.id
+                      ? 'bg-[#3a73b8]/20'
+                      : 'hover:bg-[#232e3c]'
+                    }`}
+                >
+                  {/* Avatar */}
+                  <div className="relative flex-shrink-0">
+                    <div className={`w-12 h-12 rounded-full flex items-center justify-center text-sm font-semibold text-white ${chat.type === 'group'
+                        ? 'bg-gradient-to-br from-purple-500 to-pink-500'
+                        : 'bg-gradient-to-br from-blue-500 to-cyan-500'
+                      }`}>
+                      {chat.type === 'group' ? <Users className="w-5 h-5" /> : initials}
                     </div>
                     {chat.type === 'direct' && chat.isOnline && (
-                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-white dark:border-gray-800"></div>
+                      <div className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 rounded-full border-2 border-[#17212b]" />
                     )}
                   </div>
-                  
+
+                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-medium text-gray-900 dark:text-white truncate">
-                        {chat.name}
-                      </h3>
-                      <span className="text-xs text-gray-500 dark:text-gray-400">
-                        {chat.lastMessageTime}
-                      </span>
+                      <span className="text-sm font-medium text-white truncate">{chat.name}</span>
+                      <span className="text-[10px] text-[#6c7883] flex-shrink-0 ml-2">{chat.lastMessageTime}</span>
                     </div>
-                    
-                    <div className="flex items-center justify-between mt-1">
-                      <p className="text-sm text-gray-600 dark:text-gray-400 truncate">
-                        {chat.lastMessage}
-                      </p>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <p className="text-xs text-[#6c7883] truncate">{chat.lastMessage}</p>
                       {chat.unreadCount > 0 && (
-                        <span className="ml-2 bg-blue-500 text-white text-xs rounded-full px-2 py-1 min-w-[20px] text-center">
+                        <span className="ml-2 bg-[#3a73b8] text-white text-[10px] rounded-full min-w-[1.25rem] px-1.5 py-0.5 text-center flex-shrink-0">
                           {chat.unreadCount}
                         </span>
                       )}
                     </div>
-                    
-                    {chat.type === 'group' && (
-                      <div className="flex items-center mt-1">
-                        <Users className="w-3 h-3 text-gray-400 mr-1" />
-                        <span className="text-xs text-gray-400">
-                          {chat.participants} участников
-                        </span>
-                      </div>
-                    )}
                   </div>
-                </div>
-              </button>
-            ))}
+                </button>
+              );
+            })}
           </div>
         </div>
 
-        {/* Chat Content */}
-        <div className="flex-1 flex flex-col">
-          {selectedChat ? (
-            <>
-              {/* Chat Header */}
-              <div className="p-4 bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-full flex items-center justify-center text-white font-semibold">
-                      {selectedChat.type === 'group' ? (
-                        <Users className="w-5 h-5" />
-                      ) : (
-                        selectedChat.name.charAt(0)
-                      )}
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">
-                        {selectedChat.name}
-                      </h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {selectedChat.type === 'group' 
-                          ? `${selectedChat.participants} участников`
-                          : selectedChat.isOnline ? 'В сети' : 'Не в сети'
-                        }
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleStartCall('audio')}
-                    >
-                      <Phone className="w-4 h-4" />
-                    </Button>
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      onClick={() => handleStartCall('video')}
-                    >
-                      <Video className="w-4 h-4" />
-                    </Button>
-                    <Button variant="ghost" size="sm">
-                      <MoreVertical className="w-4 h-4" />
-                    </Button>
-                  </div>
+        {/* === Chat Area === */}
+        {selectedChat ? (
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Chat Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-[#17212b] border-b border-[#232e3c]">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setSelectedChat(null)}
+                  className="md:hidden text-[#6c7883] hover:text-white transition-colors"
+                >
+                  <ArrowLeft className="w-5 h-5" />
+                </button>
+                <div>
+                  <h3 className="text-sm font-semibold text-white">{selectedChat.name}</h3>
+                  <p className="text-[11px] text-[#6c7883]">
+                    {selectedChat.type === 'group'
+                      ? `${selectedChat.participants?.length || 0} участников`
+                      : selectedChat.isOnline
+                        ? 'в сети'
+                        : 'не в сети'}
+                  </p>
                 </div>
               </div>
-
-              {/* Messages */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50 dark:bg-gray-900">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.isOwn ? 'justify-end' : 'justify-start'}`}
-                  >
-                    <div
-                      className={`max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                        message.isOwn
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white'
+              <div className="flex items-center gap-1">
+                <button className="p-2 text-[#6c7883] hover:text-white rounded-lg hover:bg-[#232e3c] transition-colors">
+                  <Phone className="w-4 h-4" />
+                </button>
+                <button className="p-2 text-[#6c7883] hover:text-white rounded-lg hover:bg-[#232e3c] transition-colors">
+                  <Video className="w-4 h-4" />
+                </button>
+                {selectedChat.type === 'group' && (
+                  <button
+                    onClick={() => setShowMembers(!showMembers)}
+                    className={`p-2 rounded-lg transition-colors ${showMembers
+                        ? 'text-[#3a73b8] bg-[#3a73b8]/10'
+                        : 'text-[#6c7883] hover:text-white hover:bg-[#232e3c]'
                       }`}
-                    >
-                      {!message.isOwn && (
-                        <p className="text-xs font-medium mb-1 opacity-70">
-                          {message.sender}
-                        </p>
-                      )}
-                      
-                      {message.type === 'text' && (
-                        <p className="text-sm">{message.content}</p>
-                      )}
-                      
-                      {message.type === 'file' && (
-                        <div className="flex items-center space-x-2">
-                          <File className="w-4 h-4" />
-                          <div>
-                            <p className="text-sm font-medium">{message.fileName}</p>
-                            <p className="text-xs opacity-70">
-                              {message.fileSize ? `${(message.fileSize / 1024 / 1024).toFixed(1)} MB` : 'Файл'}
-                            </p>
-                          </div>
-                        </div>
-                      )}
-                      
-                      <p className="text-xs mt-1 opacity-70">
-                        {message.timestamp}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Message Input */}
-              <div className="p-4 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-                <div className="flex items-center space-x-2">
-                  <Button variant="ghost" size="sm" onClick={handleFileUpload}>
-                    <Paperclip className="w-4 h-4" />
-                  </Button>
-                  <Button variant="ghost" size="sm">
-                    <Image className="w-4 h-4" />
-                  </Button>
-                  
-                  <div className="flex-1 relative">
-                    <input
-                      type="text"
-                      placeholder="Введите сообщение..."
-                      value={messageText}
-                      onChange={(e) => setMessageText(e.target.value)}
-                      onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
-                      className="w-full px-4 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                    />
-                    <Button 
-                      variant="ghost" 
-                      size="sm"
-                      className="absolute right-1 top-1/2 transform -translate-y-1/2"
-                    >
-                      <Smile className="w-4 h-4" />
-                    </Button>
-                  </div>
-                  
-                  <Button variant="ghost" size="sm">
-                    <Mic className="w-4 h-4" />
-                  </Button>
-                  <Button onClick={handleSendMessage} disabled={!messageText.trim()}>
-                    <Send className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </>
-          ) : (
-            /* No Chat Selected */
-            <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-gray-900">
-              <div className="text-center">
-                <MessageSquare className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-2">
-                  Выберите чат
-                </h3>
-                <p className="text-gray-500 dark:text-gray-400">
-                  Начните общение, выбрав чат из списка слева
-                </p>
+                  >
+                    <Users className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
-          )}
-        </div>
+
+            <div className="flex flex-1 min-h-0">
+              {/* Messages */}
+              <div className="flex-1 flex flex-col min-w-0">
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+                  {currentMessages.map((msg) => (
+                    <div
+                      key={msg.id}
+                      className={`flex ${msg.isOwn ? 'justify-end' : 'justify-start'}`}
+                    >
+                      <div
+                        className={`max-w-[75%] px-3 py-2 rounded-xl ${msg.isOwn
+                            ? 'bg-[#2b5278] text-white rounded-br-sm'
+                            : 'bg-[#182533] text-white rounded-bl-sm'
+                          }`}
+                      >
+                        {!msg.isOwn && (
+                          <p className="text-[11px] font-medium text-blue-400 mb-0.5">{msg.sender}</p>
+                        )}
+                        <p className="text-sm leading-relaxed">{msg.content}</p>
+                        <p className="text-[10px] text-white/40 text-right mt-1">{msg.timestamp}</p>
+                      </div>
+                    </div>
+                  ))}
+                  <div ref={messagesEndRef} />
+                </div>
+
+                {/* Input */}
+                <div className="px-4 py-3 bg-[#17212b] border-t border-[#232e3c]">
+                  <div className="flex items-center gap-2">
+                    <button className="p-2 text-[#6c7883] hover:text-white rounded-lg hover:bg-[#232e3c] transition-colors flex-shrink-0">
+                      <Paperclip className="w-4 h-4" />
+                    </button>
+                    <input
+                      type="text"
+                      placeholder="Написать сообщение..."
+                      value={messageText}
+                      onChange={(e) => setMessageText(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleSendMessage()}
+                      className="flex-1 bg-[#0e1621] border border-[#232e3c] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] transition-colors"
+                    />
+                    <button className="p-2 text-[#6c7883] hover:text-white rounded-lg hover:bg-[#232e3c] transition-colors flex-shrink-0">
+                      <Smile className="w-4 h-4" />
+                    </button>
+                    <button
+                      onClick={handleSendMessage}
+                      disabled={!messageText.trim()}
+                      className={`p-2.5 rounded-xl transition-all flex-shrink-0 ${messageText.trim()
+                          ? 'bg-[#3a73b8] text-white hover:bg-[#4a83c8]'
+                          : 'text-[#6c7883] bg-transparent cursor-default'
+                        }`}
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* === Group Members Panel === */}
+              {showMembers && selectedChat.type === 'group' && selectedChat.participants && (
+                <div className="w-64 border-l border-[#232e3c] bg-[#17212b] flex-shrink-0 hidden md:flex md:flex-col">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-[#232e3c]">
+                    <h4 className="text-xs font-semibold text-[#6c7883] uppercase">
+                      Участники ({selectedChat.participants.length})
+                    </h4>
+                    <button
+                      onClick={() => setShowMembers(false)}
+                      className="text-[#6c7883] hover:text-white transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex-1 overflow-y-auto p-2">
+                    {selectedChat.participants.map((member) => (
+                      <div
+                        key={member.id}
+                        className="flex items-center gap-2.5 px-3 py-2 rounded-lg hover:bg-[#232e3c] transition-colors"
+                      >
+                        <div className="relative flex-shrink-0">
+                          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center text-[11px] font-semibold text-white">
+                            {member.name.split(' ').map((n) => n[0]).join('')}
+                          </div>
+                          {member.isOnline && (
+                            <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-500 rounded-full border border-[#17212b]" />
+                          )}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-white truncate">{member.name}</p>
+                          <p className="text-[10px] text-[#6c7883] truncate">{member.role}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        ) : (
+          /* No chat selected state */
+          <div className="flex-1 hidden md:flex items-center justify-center">
+            <div className="text-center">
+              <div className="w-16 h-16 rounded-full bg-[#232e3c] flex items-center justify-center mx-auto mb-4">
+                <Send className="w-7 h-7 text-[#6c7883]" />
+              </div>
+              <h3 className="text-sm font-medium text-white mb-1">Выберите чат</h3>
+              <p className="text-xs text-[#6c7883]">Начните общение из списка слева</p>
+            </div>
+          </div>
+        )}
       </div>
     </MainLayout>
   );
