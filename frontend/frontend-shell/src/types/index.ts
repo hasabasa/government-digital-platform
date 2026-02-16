@@ -5,13 +5,16 @@ export interface User {
   firstName: string;
   lastName: string;
   fullName?: string;
-  role: string;
+  role: 'admin' | 'manager' | 'employee';
   organizationId?: string;
   organization?: string;
   position?: string;
   avatar?: string;
   isOnline?: boolean;
-  iin?: string;
+  phone?: string;
+  bio?: string;
+  statusMessage?: string;
+  lastLoginAt?: string;
 }
 
 export interface Chat {
@@ -34,12 +37,32 @@ export interface Chat {
 export interface Message {
   id: string;
   chatId: string;
-  authorId: string;
+  senderId: string;
+  senderName?: string;
+  senderAvatar?: string;
   content: string;
-  type: 'text' | 'file' | 'image' | 'system';
+  type: 'text' | 'file' | 'image' | 'video' | 'audio' | 'system';
+  fileId?: string;
   fileUrl?: string;
   fileName?: string;
+  fileSize?: number;
+  fileMimeType?: string;
+  replyToId?: string;
+  isEdited?: boolean;
+  isDeleted?: boolean;
+  readBy?: Array<{ userId: string; readAt: string }>;
+  metadata?: Record<string, any>;
   editedAt?: Date;
+  createdAt: Date;
+}
+
+export interface Contact {
+  id: string;
+  userId: string;
+  contactUserId: string;
+  status: 'pending' | 'accepted' | 'blocked';
+  note?: string;
+  user?: User;
   createdAt: Date;
 }
 

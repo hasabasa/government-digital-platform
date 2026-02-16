@@ -1,5 +1,5 @@
 {
-  "name": "@gov-platform/file-service",
+  "name": "@cube-demper/file-service",
   "version": "0.1.0",
   "main": "dist/index.js",
   "scripts": {
@@ -13,8 +13,8 @@
   "dependencies": {
     "@aws-sdk/client-s3": "^3.454.0",
     "@aws-sdk/s3-request-presigner": "^3.454.0",
-    "@gov-platform/database": "*",
-    "@gov-platform/types": "*",
+    "@cube-demper/database": "*",
+    "@cube-demper/types": "*",
     "archiver": "^6.0.1",
     "aws-sdk": "^2.1498.0",
     "axios": "^1.6.2",

@@ -8,7 +8,7 @@ export const config = {
   
   // Database Configuration
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/gov_platform',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/cube_demper',
     ssl: process.env.NODE_ENV === 'production',
   },
 
@@ -30,7 +30,7 @@ export const config = {
     endpoint: process.env.S3_ENDPOINT || 'http://localhost:9000',
     accessKeyId: process.env.S3_ACCESS_KEY || 'minioadmin',
     secretAccessKey: process.env.S3_SECRET_KEY || 'minioadmin123',
-    bucket: process.env.S3_BUCKET || 'gov-platform-files',
+    bucket: process.env.S3_BUCKET || 'cube-demper-files',
     region: process.env.S3_REGION || 'us-east-1',
     forcePathStyle: true,
   },

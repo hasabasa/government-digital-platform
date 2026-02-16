@@ -26,25 +26,18 @@ export const TaskStatusSchema = z.enum([
 export type TaskStatus = z.infer<typeof TaskStatusSchema>;
 
 export const TaskTypeSchema = z.enum([
-  'directive',
-  'assignment',
-  'request',
-  'project',
+  'task',
+  'bug',
+  'feature',
   'meeting',
-  'report',
-  'review',
-  'approval',
-  'monitoring'
+  'review'
 ]);
 
 export type TaskType = z.infer<typeof TaskTypeSchema>;
 
 export const ConfidentialityLevelSchema = z.enum([
   'public',
-  'internal',
-  'confidential',
-  'secret',
-  'top_secret'
+  'internal'
 ]);
 
 export type ConfidentialityLevel = z.infer<typeof ConfidentialityLevelSchema>;
@@ -107,7 +100,6 @@ export const TaskSchema = BaseEntitySchema.extend({
   approvedBy: z.string().uuid().optional(),
   approvedAt: z.date().optional(),
   confidentialityLevel: ConfidentialityLevelSchema.default('internal'),
-  accessRestrictions: z.string().optional(),
   parentTaskId: z.string().uuid().optional(),
   dependsOnTaskIds: z.array(z.string().uuid()).optional(),
   relatedDocuments: z.array(z.object({
@@ -115,7 +107,6 @@ export const TaskSchema = BaseEntitySchema.extend({
     name: z.string(),
     url: z.string().url(),
   })).optional(),
-  orderNumber: z.string().max(100).optional(),
   tags: z.array(z.string()).optional(),
   customFields: z.record(z.any()).optional(),
   result: z.string().optional(),
@@ -218,7 +209,6 @@ export const CreateTaskRequestSchema = z.object({
   confidentialityLevel: ConfidentialityLevelSchema.default('internal'),
   parentTaskId: z.string().uuid().optional(),
   dependsOnTaskIds: z.array(z.string().uuid()).optional(),
-  orderNumber: z.string().max(100).optional(),
   tags: z.array(z.string()).optional(),
   assignments: z.array(z.object({
     userId: z.string().uuid(),

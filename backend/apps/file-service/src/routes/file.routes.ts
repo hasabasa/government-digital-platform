@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { FileController } from '../controllers/file.controller';
 import { AuthMiddleware } from '../middleware/auth.middleware';
 import { ValidationMiddleware } from '../middleware/validation.middleware';
-import { PaginationSchema } from '@gov-platform/types';
+import { PaginationSchema } from '@cube-demper/types';
 import { z } from 'zod';
 
 const router = Router();

@@ -1,6 +1,6 @@
 import { pgTable, uuid, varchar, timestamp, boolean, integer, jsonb, pgEnum, text } from 'drizzle-orm/pg-core';
 import { users } from './users';
-import { governmentStructure } from './hierarchy';
+import { companyStructure } from './company';
 
 export const callTypeEnum = pgEnum('call_type', ['audio', 'video', 'screen_share', 'conference']);
 export const callStatusEnum = pgEnum('call_status', ['pending', 'active', 'ended', 'missed', 'declined', 'failed']);
@@ -14,7 +14,7 @@ export const calls = pgTable('calls', {
   
   // Call participants
   initiatorId: uuid('initiator_id').notNull().references(() => users.id),
-  organizationId: uuid('organization_id').references(() => governmentStructure.id),
+  organizationId: uuid('organization_id').references(() => companyStructure.id),
   chatId: uuid('chat_id'),
   groupId: uuid('group_id'),
   
@@ -43,11 +43,9 @@ export const calls = pgTable('calls', {
   allowScreenShare: boolean('allow_screen_share').default(true),
   allowChat: boolean('allow_chat').default(true),
   
-  // Security and permissions
-  securityLevel: varchar('security_level', { length: 20 }).default('normal'), // normal, high, restricted
-  allowedRoles: jsonb('allowed_roles').default([]),
-  restrictedUsers: jsonb('restricted_users').default([]),
-  
+  // Google Meet integration
+  googleMeetLink: varchar('google_meet_link', { length: 500 }),
+
   // Technical details
   webrtcSettings: jsonb('webrtc_settings'),
   qualitySettings: jsonb('quality_settings'),

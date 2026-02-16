@@ -1,6 +1,6 @@
 import { pgTable, uuid, varchar, text, timestamp, boolean, integer, pgEnum, jsonb } from 'drizzle-orm/pg-core';
 import { users } from './users';
-import { governmentStructure } from './hierarchy';
+import { companyStructure } from './company';
 
 // Приоритеты задач
 export const taskPriorityEnum = pgEnum('task_priority', [
@@ -25,24 +25,17 @@ export const taskStatusEnum = pgEnum('task_status', [
 
 // Типы задач
 export const taskTypeEnum = pgEnum('task_type', [
-  'directive',    // Директива (от руководства)
-  'assignment',   // Поручение
-  'request',      // Запрос
-  'project',      // Проект
-  'meeting',      // Встреча/совещание
-  'report',       // Отчет
-  'review',       // Рассмотрение
-  'approval',     // Согласование
-  'monitoring'    // Мониторинг
+  'task',         // Обычная задача
+  'bug',          // Баг
+  'feature',      // Фича
+  'meeting',      // Встреча
+  'review'        // Ревью
 ]);
 
-// Уровни конфиденциальности
+// Уровни видимости задач
 export const confidentialityLevelEnum = pgEnum('confidentiality_level', [
-  'public',           // Открытая
-  'internal',         // Внутренняя
-  'confidential',     // Конфиденциальная
-  'secret',           // Секретная
-  'top_secret'        // Совершенно секретная
+  'public',           // Видна всем
+  'internal'          // Только участникам
 ]);
 
 // Основная таблица задач
@@ -62,7 +55,7 @@ export const tasks: any = pgTable('tasks', {
   supervisorId: uuid('supervisor_id').references(() => users.id), // Руководитель проекта
   
   // Организационная принадлежность
-  organizationId: uuid('organization_id').references(() => governmentStructure.id),
+  organizationId: uuid('organization_id').references(() => companyStructure.id),
   
   // Временные рамки
   startDate: timestamp('start_date'),
@@ -77,18 +70,16 @@ export const tasks: any = pgTable('tasks', {
   approvedBy: uuid('approved_by').references(() => users.id),
   approvedAt: timestamp('approved_at'),
   
-  // Конфиденциальность и безопасность
+  // Видимость
   confidentialityLevel: confidentialityLevelEnum('confidentiality_level').default('internal'),
-  accessRestrictions: text('access_restrictions'), // JSON список ограничений доступа
   
   // Связи между задачами
   parentTaskId: uuid('parent_task_id').references(() => tasks.id), // Родительская задача
   dependsOnTaskIds: jsonb('depends_on_task_ids'), // JSON массив ID задач-зависимостей
   
-  // Документооборот
-  relatedDocuments: jsonb('related_documents'), // JSON массив ссылок на документы
-  orderNumber: varchar('order_number', { length: 100 }), // Номер приказа/поручения
-  
+  // Связанные документы
+  relatedDocuments: jsonb('related_documents'),
+
   // Метаданные
   tags: jsonb('tags'),           // JSON массив тегов
   customFields: jsonb('custom_fields'), // Дополнительные поля

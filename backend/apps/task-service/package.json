@@ -1,5 +1,5 @@
 {
-  "name": "@gov-platform/task-service",
+  "name": "@cube-demper/task-service",
   "version": "0.1.0",
   "main": "dist/index.js",
   "scripts": {
@@ -10,8 +10,8 @@
     "test": "jest"
   },
   "dependencies": {
-    "@gov-platform/types": "*",
-    "@gov-platform/database": "*",
+    "@cube-demper/types": "*",
+    "@cube-demper/database": "*",
     "express": "^4.18.2",
     "cors": "^2.8.5",
     "helmet": "^7.1.0",

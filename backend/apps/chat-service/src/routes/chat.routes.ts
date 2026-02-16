@@ -6,7 +6,7 @@ import {
   CreateChatRequestSchema,
   SendMessageRequestSchema,
   PaginationSchema,
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 import { z } from 'zod';
 
 const router = Router();

@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { User, PaginatedResponse, Pagination } from '@gov-platform/types';
+import { User, PaginatedResponse, Pagination } from '@cube-demper/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 

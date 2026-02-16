@@ -103,7 +103,7 @@ export class DatabaseConnection {
 
 export const getDefaultConfig = (): DatabaseConfig => ({
   postgres: {
-    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/gov_platform',
+    connectionString: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/cube_demper',
     ssl: process.env.NODE_ENV === 'production',
   },
   redis: {

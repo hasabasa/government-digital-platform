@@ -1,14 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { db } from '@gov-platform/database';
+import { db } from '@cube-demper/database';
 import { 
   tasks, 
   taskAssignments, 
   taskComments, 
   taskChecklist,
   users,
-  governmentStructure,
+  companyStructure,
   appointments
-} from '@gov-platform/database/schema';
+} from '@cube-demper/database/schema';
 import { TaskService } from '../services/task.service';
 import { PermissionsService } from '../services/permissions.service';
 
@@ -79,11 +79,11 @@ describe('TaskService', () => {
     await db.delete(tasks);
     await db.delete(appointments);
     await db.delete(users);
-    await db.delete(governmentStructure);
+    await db.delete(companyStructure);
 
     // Insert test data
     await db.insert(users).values([testManager, testEmployee]);
-    await db.insert(governmentStructure).values(testOrganization);
+    await db.insert(companyStructure).values(testOrganization);
   });
 
   afterEach(async () => {
@@ -93,7 +93,7 @@ describe('TaskService', () => {
     await db.delete(tasks);
     await db.delete(appointments);
     await db.delete(users);
-    await db.delete(governmentStructure);
+    await db.delete(companyStructure);
     vi.clearAllMocks();
   });
 

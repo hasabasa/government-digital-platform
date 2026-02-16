@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { CallController } from '../controllers/call.controller';
-import { CreateCallRequestSchema } from '@gov-platform/types';
+import { CreateCallRequestSchema } from '@cube-demper/types';
 import { z } from 'zod';
 
 const router = Router();

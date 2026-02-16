@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
       manifest: {
-        name: 'Платформа госслужащих',
-        short_name: 'ГосПлатформа',
-        description: 'Защищённая платформа для коммуникации государственных служащих',
+        name: 'Cube Demper OS',
+        short_name: 'CubeDemper',
+        description: 'Внутренняя платформа управления бизнесом Cube Demper',
         theme_color: '#2D7DD2',
         background_color: '#ffffff',
         display: 'standalone',

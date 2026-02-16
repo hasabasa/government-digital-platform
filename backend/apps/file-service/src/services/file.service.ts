@@ -1,5 +1,5 @@
-import { DatabaseConnection } from '@gov-platform/database';
-import { files, filePermissions } from '@gov-platform/database';
+import { DatabaseConnection } from '@cube-demper/database';
+import { files, filePermissions } from '@cube-demper/database';
 import { eq, and, or, desc, sql } from 'drizzle-orm';
 import {
   File,
@@ -7,7 +7,7 @@ import {
   FilePermission,
   PaginatedResponse,
   Pagination,
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 import { logger } from '../utils/logger';
 import { StorageService } from './storage.service';
 import { ProcessingService } from './processing.service';

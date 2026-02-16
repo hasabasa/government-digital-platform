@@ -1,5 +1,5 @@
 {
-  "name": "@gov-platform/user-service",
+  "name": "@cube-demper/user-service",
   "version": "0.1.0",
   "main": "dist/index.js",
   "scripts": {
@@ -11,8 +11,8 @@
     "test:watch": "jest --watch"
   },
   "dependencies": {
-    "@gov-platform/database": "*",
-    "@gov-platform/types": "*",
+    "@cube-demper/database": "*",
+    "@cube-demper/types": "*",
     "axios": "^1.6.2",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",

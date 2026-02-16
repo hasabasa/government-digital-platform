@@ -20,7 +20,7 @@ app.use(express.json());
 // Basic auth middleware (simplified)
 app.use((req, res, next) => {
   // In real implementation, verify JWT token
-  req.user = { id: 'user-123', email: 'test@example.com', role: 'government_official' };
+  req.user = { id: 'user-123', email: 'test@example.com', role: 'admin' };
   next();
 });
 

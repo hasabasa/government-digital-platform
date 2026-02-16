@@ -5,7 +5,7 @@ import { ValidationMiddleware } from '../middleware/validation.middleware';
 import {
   LoginRequestSchema,
   RefreshTokenRequestSchema,
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 
 const router = Router();
 const authController = new AuthController();

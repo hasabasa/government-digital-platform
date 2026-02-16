@@ -223,7 +223,7 @@ const OrdersPage: React.FC = () => {
     <MainLayout>
       <div className="h-full overflow-auto bg-[#0e1621]">
         {/* Header */}
-        <div className="bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-6 py-4">
+        <div className="bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-4 md:px-6 py-4">
           <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-xl font-semibold text-white">Задачи</h1>
@@ -239,17 +239,17 @@ const OrdersPage: React.FC = () => {
           </div>
 
           {/* Status tabs */}
-          <div className="flex gap-1 bg-[#0e1621] rounded-xl p-1">
+          <div className="flex gap-1 bg-[#0e1621] rounded-xl p-1 overflow-x-auto">
             {[
               { key: 'all', label: 'Все' },
               { key: 'todo', label: 'К выполнению' },
               { key: 'in_progress', label: 'В работе' },
-              { key: 'completed', label: 'Выполнено' },
+              { key: 'completed', label: 'Готово' },
             ].map((tab) => (
               <button
                 key={tab.key}
                 onClick={() => setStatusFilter(tab.key)}
-                className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-medium transition-all ${statusFilter === tab.key
+                className={`flex-1 flex items-center justify-center gap-1 sm:gap-1.5 py-2 rounded-lg text-[11px] sm:text-xs font-medium transition-all whitespace-nowrap ${statusFilter === tab.key
                   ? 'bg-[#3a73b8] text-white'
                   : 'text-[#6c7883] hover:text-white'
                   }`}
@@ -269,7 +269,7 @@ const OrdersPage: React.FC = () => {
         </div>
 
         {/* Search */}
-        <div className="px-6 py-3">
+        <div className="px-4 md:px-6 py-3">
           <div className="relative">
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#6c7883]" />
             <input
@@ -283,7 +283,7 @@ const OrdersPage: React.FC = () => {
         </div>
 
         {/* Task List */}
-        <div className="px-6 pb-6 space-y-2">
+        <div className="px-4 md:px-6 pb-6 space-y-2">
           {filteredTasks.map((task) => {
             const statusCfg = STATUS_CONFIG[task.status];
             const priorityCfg = PRIORITY_CONFIG[task.priority];

@@ -1,5 +1,5 @@
 import { beforeAll, afterAll, beforeEach, afterEach } from 'vitest';
-import { db } from '@gov-platform/database';
+import { db } from '@cube-demper/database';
 
 // Глобальная настройка тестовой среды
 beforeAll(async () => {
@@ -7,7 +7,7 @@ beforeAll(async () => {
   
   // Устанавливаем тестовую БД
   process.env.NODE_ENV = 'test';
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5432/gov_platform_test';
+  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://test:test@localhost:5432/cube_demper_test';
   
   // Проверяем подключение к БД
   try {

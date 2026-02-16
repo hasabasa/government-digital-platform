@@ -1,5 +1,5 @@
-import { DatabaseConnection } from '@gov-platform/database';
-import { contacts, users } from '@gov-platform/database/schema';
+import { DatabaseConnection } from '@cube-demper/database';
+import { contacts, users } from '@cube-demper/database/schema';
 import { eq, and, or, sql } from 'drizzle-orm';
 import {
   Contact,
@@ -7,7 +7,7 @@ import {
   User,
   PaginatedResponse,
   Pagination,
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 import { logger } from '../utils/logger';
 import { CacheService } from './cache.service';
 import { v4 as uuidv4 } from 'uuid';

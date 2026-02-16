@@ -6,8 +6,9 @@ import { useAuthStore } from './stores/auth.store';
 import { useThemeStore } from './stores/theme.store';
 import { LoginPage } from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
-import FeedPage from './pages/FeedPage';
 import ChatPage from './pages/ChatPage';
+import ProfilePage from './pages/ProfilePage';
+import ContactsPage from './pages/ContactsPage';
 import GroupsPage from './pages/GroupsPage';
 import CallsPage from './pages/CallsPage';
 import OrdersPage from './pages/OrdersPage';
@@ -93,11 +94,21 @@ function App() {
               }
             />
             <Route
-              path="/feed"
+              path="/profile"
               element={
                 <ProtectedRoute>
                   <WebSocketProvider>
-                    <FeedPage />
+                    <ProfilePage />
+                  </WebSocketProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/contacts"
+              element={
+                <ProtectedRoute>
+                  <WebSocketProvider>
+                    <ContactsPage />
                   </WebSocketProvider>
                 </ProtectedRoute>
               }

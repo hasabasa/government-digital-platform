@@ -1,21 +1,20 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { ru } from 'date-fns/locale';
-import { Avatar } from '../ui/Avatar';
 import { Message } from '../../types';
-import { 
-  Check, 
-  CheckCheck, 
-  Clock, 
-  AlertCircle,
+import { apiService } from '../../services/api.service';
+import {
+  Check,
+  CheckCheck,
   File,
-  Image,
+  Image as ImageIcon,
   Video,
-  Music,
   Download,
   Reply,
-  MoreHorizontal
+  MoreHorizontal,
+  Play,
+  Pause,
 } from 'lucide-react';
 
 interface MessageItemProps {
@@ -27,28 +26,6 @@ interface MessageItemProps {
   className?: string;
 }
 
-const getFileIcon = (mimeType: string) => {
-  if (mimeType.startsWith('image/')) return Image;
-  if (mimeType.startsWith('video/')) return Video;
-  if (mimeType.startsWith('audio/')) return Music;
-  return File;
-};
-
-const getMessageStatusIcon = (status: string) => {
-  switch (status) {
-    case 'sent':
-      return <Check className="w-3 h-3" />;
-    case 'delivered':
-      return <CheckCheck className="w-3 h-3" />;
-    case 'read':
-      return <CheckCheck className="w-3 h-3 text-primary" />;
-    case 'failed':
-      return <AlertCircle className="w-3 h-3 text-red-500" />;
-    default:
-      return <Clock className="w-3 h-3" />;
-  }
-};
-
 export const MessageItem: React.FC<MessageItemProps> = ({
   message,
   isOwn,
@@ -57,145 +34,316 @@ export const MessageItem: React.FC<MessageItemProps> = ({
   chatType,
   className,
 }) => {
-  const [showMenu, setShowMenu] = React.useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string | null>(message.fileUrl || null);
+  const [imageLoading, setImageLoading] = useState(false);
+
   const messageTime = format(new Date(message.createdAt), 'HH:mm', { locale: ru });
 
-  const renderMessageContent = () => {
+  // Load image URL from fileId if needed
+  React.useEffect(() => {
+    if (message.type === 'image' && message.fileId && !imageUrl) {
+      setImageLoading(true);
+      apiService.getFileDownloadUrl(message.fileId).then((res) => {
+        const url = res.data?.url || res.url;
+        setImageUrl(url);
+      }).catch(() => {}).finally(() => setImageLoading(false));
+    }
+  }, [message.fileId, message.type, imageUrl]);
+
+  const handleDownload = async () => {
+    if (message.fileUrl) {
+      window.open(message.fileUrl, '_blank');
+      return;
+    }
+    if (message.fileId) {
+      try {
+        const res = await apiService.getFileDownloadUrl(message.fileId);
+        const url = res.data?.url || res.url;
+        if (url) window.open(url, '_blank');
+      } catch {
+        // ignore
+      }
+    }
+  };
+
+  const formatFileSize = (bytes?: number) => {
+    if (!bytes) return '';
+    if (bytes < 1024) return `${bytes} Б`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} КБ`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
+  };
+
+  const renderContent = () => {
     switch (message.type) {
       case 'text':
         return (
-          <div className="break-words whitespace-pre-wrap">
+          <div className="break-words whitespace-pre-wrap text-sm">
             {message.content}
           </div>
         );
 
-      case 'file':
-        if (message.fileUrl && message.fileName) {
-          const FileIcon = getFileIcon(message.fileMimeType || '');
-          
-          return (
-            <div className="flex items-center gap-3 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg">
-              <div className="flex-shrink-0">
-                <FileIcon className="w-8 h-8 text-gray-500" />
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-medium text-gray-900 dark:text-white truncate">
-                  {message.fileName}
-                </p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">
-                  {message.fileSize ? `${(message.fileSize / 1024 / 1024).toFixed(1)} MB` : 'Файл'}
-                </p>
-              </div>
-              <button className="flex-shrink-0 p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-lg">
-                <Download className="w-4 h-4" />
-              </button>
-            </div>
-          );
-        }
-        return <div className="text-gray-500">Файл недоступен</div>;
-
       case 'image':
-        if (message.fileUrl) {
-          return (
-            <div className="relative max-w-sm">
+        return (
+          <div className="max-w-[280px]">
+            {imageLoading ? (
+              <div className="w-[280px] h-[200px] bg-[#232e3c] rounded-lg animate-pulse" />
+            ) : imageUrl ? (
               <img
-                src={message.fileUrl}
+                src={imageUrl}
                 alt={message.fileName || 'Изображение'}
-                className="rounded-lg max-w-full h-auto"
+                className="rounded-lg max-w-full h-auto cursor-pointer"
                 loading="lazy"
+                onClick={() => window.open(imageUrl, '_blank')}
               />
-              {message.content && (
-                <div className="mt-2">
-                  {message.content}
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-[#6c7883]">
+                <ImageIcon className="w-5 h-5" />
+                <span>Изображение недоступно</span>
+              </div>
+            )}
+            {message.content && message.content !== message.fileName && (
+              <p className="text-sm mt-1.5">{message.content}</p>
+            )}
+          </div>
+        );
+
+      case 'video':
+        return (
+          <div className="max-w-[280px]">
+            <div
+              className="relative bg-[#232e3c] rounded-lg p-4 cursor-pointer hover:bg-[#2a3a4c] transition-colors"
+              onClick={handleDownload}
+            >
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#3a73b8]/20 flex items-center justify-center">
+                  <Video className="w-5 h-5 text-[#3a73b8]" />
                 </div>
-              )}
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm text-white truncate">{message.fileName || 'Видео'}</p>
+                  <p className="text-xs text-[#6c7883]">{formatFileSize(message.fileSize)}</p>
+                </div>
+                <Download className="w-4 h-4 text-[#6c7883]" />
+              </div>
             </div>
-          );
-        }
-        return <div className="text-gray-500">Изображение недоступно</div>;
+          </div>
+        );
+
+      case 'audio':
+        return <AudioBubble message={message} />;
+
+      case 'file':
+        return (
+          <div
+            className="flex items-center gap-3 bg-[#232e3c] rounded-lg p-3 cursor-pointer hover:bg-[#2a3a4c] transition-colors max-w-[280px]"
+            onClick={handleDownload}
+          >
+            <div className="w-10 h-10 rounded-lg bg-[#3a73b8]/20 flex items-center justify-center flex-shrink-0">
+              <File className="w-5 h-5 text-[#3a73b8]" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-white truncate">{message.fileName || 'Файл'}</p>
+              <p className="text-xs text-[#6c7883]">{formatFileSize(message.fileSize)}</p>
+            </div>
+            <Download className="w-4 h-4 text-[#6c7883] flex-shrink-0" />
+          </div>
+        );
+
+      case 'system':
+        return (
+          <div className="text-xs text-[#6c7883] text-center italic">
+            {message.content}
+          </div>
+        );
 
       default:
-        return <div className="text-gray-500">Неподдерживаемый тип сообщения</div>;
+        return <div className="text-sm text-[#6c7883]">{message.content || 'Сообщение'}</div>;
     }
   };
+
+  // System messages are centered
+  if (message.type === 'system') {
+    return (
+      <div className="flex justify-center my-2">
+        <div className="bg-[#232e3c]/50 rounded-full px-4 py-1">
+          {renderContent()}
+        </div>
+      </div>
+    );
+  }
+
+  const initials = message.senderName
+    ? message.senderName.split(' ').map((w) => w[0]).join('').slice(0, 2).toUpperCase()
+    : '??';
 
   return (
     <div
       className={clsx(
-        'flex gap-3 group',
+        'flex gap-2 group px-4',
         isOwn ? 'justify-end' : 'justify-start',
-        isGrouped ? 'mt-1' : 'mt-4',
+        isGrouped ? 'mt-0.5' : 'mt-3',
         className
       )}
       onMouseEnter={() => setShowMenu(true)}
       onMouseLeave={() => setShowMenu(false)}
     >
-      {/* Avatar for incoming messages in group chats */}
-      {!isOwn && showAvatar && chatType !== 'direct' && (
-        <div className="flex-shrink-0">
-          <Avatar
-            src={message.senderAvatar}
-            name={message.senderName}
-            size="sm"
-          />
-        </div>
-      )}
-
-      {/* Empty space for grouped messages */}
-      {!isOwn && !showAvatar && chatType !== 'direct' && (
-        <div className="w-8 flex-shrink-0" />
-      )}
-
-      {/* Message content */}
-      <div
-        className={clsx(
-          'message relative max-w-[70%]',
-          isOwn ? 'outgoing ml-auto' : 'incoming',
-          isGrouped && 'mt-1'
-        )}
-      >
-        {/* Sender name for incoming messages in group chats */}
-        {!isOwn && showAvatar && chatType !== 'direct' && (
-          <div className="text-xs font-medium text-primary mb-1">
-            {message.senderName}
-          </div>
-        )}
-
-        {/* Message content */}
-        <div className="message-content">
-          {renderMessageContent()}
-        </div>
-
-        {/* Message footer */}
-        <div className={clsx(
-          'flex items-center gap-1 mt-1',
-          isOwn ? 'justify-end' : 'justify-start'
-        )}>
-          <span className="text-xs text-gray-500 dark:text-gray-400">
-            {messageTime}
-          </span>
-          {isOwn && (
-            <div className="text-gray-500 dark:text-gray-400">
-              {getMessageStatusIcon(message.status || 'sent')}
+      {/* Avatar */}
+      {!isOwn && chatType !== 'direct' && (
+        <div className="w-8 flex-shrink-0">
+          {showAvatar && (
+            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-[10px] font-bold">
+              {initials}
             </div>
           )}
         </div>
+      )}
 
-        {/* Message actions menu */}
+      {/* Message bubble */}
+      <div className="relative max-w-[70%]">
+        <div
+          className={clsx(
+            'rounded-xl px-3 py-2',
+            isOwn
+              ? 'bg-[#2b5278] text-white'
+              : 'bg-[#182533] text-white'
+          )}
+        >
+          {/* Sender name */}
+          {!isOwn && showAvatar && chatType !== 'direct' && (
+            <p className="text-xs font-medium text-[#3a73b8] mb-1">
+              {message.senderName}
+            </p>
+          )}
+
+          {/* Content */}
+          {renderContent()}
+
+          {/* Time + status */}
+          <div className={clsx('flex items-center gap-1 mt-1', isOwn ? 'justify-end' : 'justify-start')}>
+            {message.isEdited && (
+              <span className="text-[10px] text-[#6c7883]">ред.</span>
+            )}
+            <span className="text-[10px] text-[#6c7883]">{messageTime}</span>
+            {isOwn && (
+              <span className="text-[#6c7883]">
+                {message.readBy && message.readBy.length > 0 ? (
+                  <CheckCheck className="w-3 h-3 text-[#3a73b8]" />
+                ) : (
+                  <Check className="w-3 h-3" />
+                )}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* Action buttons on hover */}
         {showMenu && (
-          <div className={clsx(
-            'absolute top-0 flex items-center gap-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg px-1 py-1',
-            isOwn ? 'right-full mr-2' : 'left-full ml-2'
-          )}>
-            <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-              <Reply className="w-4 h-4" />
+          <div
+            className={clsx(
+              'absolute top-0 flex items-center gap-0.5 bg-[#17212b] border border-[#232e3c] rounded-lg shadow-lg px-1 py-0.5 z-10',
+              isOwn ? 'right-full mr-1' : 'left-full ml-1'
+            )}
+          >
+            <button className="p-1 text-[#6c7883] hover:text-white rounded transition-colors">
+              <Reply className="w-3.5 h-3.5" />
             </button>
-            <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded">
-              <MoreHorizontal className="w-4 h-4" />
+            <button className="p-1 text-[#6c7883] hover:text-white rounded transition-colors">
+              <MoreHorizontal className="w-3.5 h-3.5" />
             </button>
           </div>
         )}
       </div>
+    </div>
+  );
+};
+
+// Inline audio player component
+const AudioBubble: React.FC<{ message: Message }> = ({ message }) => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [audioUrl, setAudioUrl] = useState<string | null>(message.fileUrl || null);
+  const audioRef = React.useRef<HTMLAudioElement>(null);
+
+  React.useEffect(() => {
+    if (message.fileId && !audioUrl) {
+      apiService.getFileDownloadUrl(message.fileId).then((res) => {
+        setAudioUrl(res.data?.url || res.url);
+      }).catch(() => {});
+    }
+  }, [message.fileId, audioUrl]);
+
+  const togglePlay = () => {
+    if (!audioRef.current || !audioUrl) return;
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleTimeUpdate = () => {
+    if (!audioRef.current) return;
+    setProgress((audioRef.current.currentTime / audioRef.current.duration) * 100 || 0);
+  };
+
+  const handleLoadedMetadata = () => {
+    if (audioRef.current) {
+      setDuration(audioRef.current.duration);
+    }
+  };
+
+  const handleEnded = () => {
+    setIsPlaying(false);
+    setProgress(0);
+  };
+
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!audioRef.current) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    const pct = (e.clientX - rect.left) / rect.width;
+    audioRef.current.currentTime = pct * audioRef.current.duration;
+  };
+
+  const formatDuration = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
+
+  return (
+    <div className="flex items-center gap-3 min-w-[200px]">
+      <button
+        onClick={togglePlay}
+        className="w-10 h-10 rounded-full bg-[#3a73b8] flex items-center justify-center flex-shrink-0 text-white hover:bg-[#4a83c8] transition-colors"
+      >
+        {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+      </button>
+      <div className="flex-1 min-w-0">
+        <div
+          className="h-1 bg-[#232e3c] rounded-full cursor-pointer"
+          onClick={handleSeek}
+        >
+          <div
+            className="h-full bg-[#3a73b8] rounded-full transition-all"
+            style={{ width: `${progress}%` }}
+          />
+        </div>
+        <p className="text-[10px] text-[#6c7883] mt-1">
+          {duration > 0 ? formatDuration(duration) : '0:00'}
+        </p>
+      </div>
+      {audioUrl && (
+        <audio
+          ref={audioRef}
+          src={audioUrl}
+          onTimeUpdate={handleTimeUpdate}
+          onLoadedMetadata={handleLoadedMetadata}
+          onEnded={handleEnded}
+          preload="metadata"
+        />
+      )}
     </div>
   );
 };

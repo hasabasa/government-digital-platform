@@ -29,11 +29,11 @@ interface NotificationCenterProps {
   className?: string;
 }
 
-type NotificationType = 
-  | 'task_assigned' 
-  | 'task_completed' 
+type NotificationType =
+  | 'task_assigned'
+  | 'task_completed'
   | 'task_overdue'
-  | 'disciplinary_action'
+  | 'achievement'
   | 'commendation'
   | 'call_incoming'
   | 'call_missed'
@@ -75,42 +75,42 @@ const mockNotifications: Notification[] = [
     isImportant: true,
     actionRequired: true,
     relatedUserId: 'user-1',
-    relatedUserName: 'Асылбек Нурланов',
-    relatedUserPosition: 'Министр финансов',
+    relatedUserName: 'Хасенхан Казимов',
+    relatedUserPosition: 'Управляющий партнёр',
     metadata: { taskId: 'task-123' }
   },
   {
     id: '2',
     type: 'call_incoming',
     title: 'Входящий звонок',
-    message: 'Гульнара Касымова начала групповой видеозвонок в группе "Планирование бюджета"',
+    message: 'Адиль Хамитов начал групповой видеозвонок в группе "Планирование спринта"',
     timestamp: '10 мин назад',
     isRead: false,
     isImportant: true,
     actionRequired: true,
     relatedUserId: 'user-2',
-    relatedUserName: 'Гульнара Касымова',
-    relatedUserPosition: 'Зам. министра',
+    relatedUserName: 'Адиль Хамитов',
+    relatedUserPosition: 'Партнёр',
     metadata: { callId: 'call-456' }
   },
   {
     id: '3',
     type: 'commendation',
     title: 'Получена благодарность',
-    message: 'Министр финансов выразил благодарность за качественное выполнение аналитической работы',
+    message: 'Руководство выразило благодарность за качественное выполнение проекта',
     timestamp: '1 час назад',
     isRead: false,
     isImportant: true,
     actionRequired: false,
     relatedUserId: 'user-1',
-    relatedUserName: 'Асылбек Нурланов',
-    relatedUserPosition: 'Министр финансов'
+    relatedUserName: 'Хасенхан Казимов',
+    relatedUserPosition: 'Управляющий партнёр'
   },
   {
     id: '4',
     type: 'meeting_reminder',
     title: 'Напоминание о совещании',
-    message: 'Через 30 минут начнется совещание "Обсуждение бюджета на 2024 год"',
+    message: 'Через 30 минут начнется совещание "Обсуждение бюджета Q2"',
     timestamp: '1 час назад',
     isRead: true,
     isImportant: false,
@@ -121,39 +121,39 @@ const mockNotifications: Notification[] = [
     id: '5',
     type: 'task_completed',
     title: 'Задача выполнена',
-    message: 'Ерлан Темиров завершил задачу "Анализ налоговых поступлений"',
+    message: 'Алпамыс Мақажан завершил задачу "Рефакторинг API"',
     timestamp: '2 часа назад',
     isRead: true,
     isImportant: false,
     actionRequired: false,
-    relatedUserId: 'user-3',
-    relatedUserName: 'Ерлан Темиров',
-    relatedUserPosition: 'Начальник отдела',
+    relatedUserId: 'user-4',
+    relatedUserName: 'Алпамыс Мақажан',
+    relatedUserPosition: 'Разработчик',
     metadata: { taskId: 'task-456' }
   },
   {
     id: '6',
     type: 'message_mention',
     title: 'Упоминание в сообщении',
-    message: 'Вас упомянули в канале "Министерство финансов"',
+    message: 'Вас упомянули в канале "Разработка"',
     timestamp: '3 часа назад',
     isRead: true,
     isImportant: false,
     actionRequired: false,
-    metadata: { chatId: 'channel-finance' }
+    metadata: { chatId: 'channel-dev' }
   },
   {
     id: '7',
-    type: 'disciplinary_action',
-    title: 'Дисциплинарное взыскание',
-    message: 'Получено замечание за нарушение сроков предоставления отчетности',
+    type: 'achievement',
+    title: 'Достижение разблокировано',
+    message: 'Выполнено 100 задач! Отличная работа!',
     timestamp: '1 день назад',
     isRead: true,
     isImportant: true,
     actionRequired: false,
     relatedUserId: 'user-1',
-    relatedUserName: 'Асылбек Нурланов',
-    relatedUserPosition: 'Министр финансов'
+    relatedUserName: 'Хасенхан Казимов',
+    relatedUserPosition: 'Управляющий партнёр'
   },
   {
     id: '8',
@@ -204,8 +204,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         return FileText;
       case 'task_overdue':
         return AlertTriangle;
-      case 'disciplinary_action':
-        return Shield;
+      case 'achievement':
+        return Star;
       case 'commendation':
         return Award;
       case 'call_incoming':
@@ -232,8 +232,8 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
         return 'text-green-600 bg-green-100 dark:bg-green-900 dark:text-green-400';
       case 'task_overdue':
         return 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-400';
-      case 'disciplinary_action':
-        return 'text-red-600 bg-red-100 dark:bg-red-900 dark:text-red-400';
+      case 'achievement':
+        return 'text-purple-600 bg-purple-100 dark:bg-purple-900 dark:text-purple-400';
       case 'commendation':
         return 'text-yellow-600 bg-yellow-100 dark:bg-yellow-900 dark:text-yellow-400';
       case 'call_incoming':

@@ -30,78 +30,65 @@ interface UserProfileProps {
 // Моковые данные (в реальном приложении будут из API)
 const mockUserData = {
   id: 'user-1',
-  firstName: 'Асылбек',
-  lastName: 'Нурланов',
-  middleName: 'Серикович',
-  position: 'Министр финансов',
-  email: 'a.nurlan@minfin.gov.kz',
+  firstName: 'Хасенхан',
+  lastName: 'Казимов',
+  middleName: '',
+  position: 'Управляющий партнёр',
+  email: 'khasenkhan@cube.kz',
   phone: '+7 (701) 234-56-78',
   avatar: null,
-  joinDate: '2022-01-15',
+  joinDate: '2024-01-15',
   location: 'Астана, Казахстан',
-  
+
   // Иерархическая информация
   hierarchy: {
-    // Руководители (цепочка вверх)
-    supervisors: [
-      {
-        id: 'president',
-        name: 'Касым-Жомарт Токаев',
-        position: 'Президент Республики Казахстан',
-        level: 1,
-        organizationPath: 'Правительство РК'
-      }
-    ],
-    
-    // Текущий пользователь
+    supervisors: [],
+
     current: {
-      level: 2,
-      organizationPath: 'Правительство РК → Министерство финансов',
-      organization: 'Министерство финансов',
+      level: 1,
+      organizationPath: 'Cube Demper → Руководство',
+      organization: 'Cube Demper',
       department: null,
-      directSubordinates: 8,
-      totalSubordinates: 156
+      directSubordinates: 3,
+      totalSubordinates: 12
     },
-    
-    // Прямые подчиненные
+
     directReports: [
       {
         id: 'user-2',
-        name: 'Гульнара Касымова',
-        position: 'Заместитель министра',
-        department: 'Бюджетная политика',
-        subordinates: 23,
+        name: 'Адиль Хамитов',
+        position: 'Партнёр',
+        department: 'Разработка',
+        subordinates: 4,
         avatar: null
       },
       {
         id: 'user-3',
-        name: 'Ерлан Темиров',
-        position: 'Заместитель министра',
-        department: 'Налоговая политика',
-        subordinates: 31,
+        name: 'Азамат Бекхалиев',
+        position: 'Партнёр',
+        department: 'Продажи',
+        subordinates: 3,
         avatar: null
       },
       {
         id: 'user-4',
-        name: 'Айгуль Сарсенова',
-        position: 'Заместитель министра',
-        department: 'Финансовый контроль',
-        subordinates: 28,
+        name: 'Алпамыс Мақажан',
+        position: 'Разработчик',
+        department: 'Разработка',
+        subordinates: 0,
         avatar: null
       }
     ]
   },
-  
-  // Статистика
+
   stats: {
     completedTasks: 142,
     activeTasks: 8,
     commendations: 5,
-    yearsOfService: 12,
-    teamSize: 156
+    yearsOfService: 2,
+    teamSize: 12
   },
-  
-  // Последняя активность
+
   recentActivity: [
     {
       type: 'task_completed',
@@ -110,12 +97,12 @@ const mockUserData = {
     },
     {
       type: 'meeting',
-      description: 'Участие в совещании "Бюджетное планирование"',
+      description: 'Участие в совещании "Планирование спринта"',
       timestamp: '1 день назад'
     },
     {
       type: 'document',
-      description: 'Подписан приказ №145',
+      description: 'Утверждён бюджет на маркетинг',
       timestamp: '2 дня назад'
     }
   ]

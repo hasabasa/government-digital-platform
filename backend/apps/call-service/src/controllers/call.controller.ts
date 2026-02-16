@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { WebRTCService } from '../services/webrtc.service';
-import { CreateCallRequestSchema } from '@gov-platform/types';
+import { CreateCallRequestSchema } from '@cube-demper/types';
 import { z } from 'zod';
 
 export class CallController {

@@ -1,5 +1,5 @@
 {
-  "name": "@gov-platform/database",
+  "name": "@cube-demper/database",
   "version": "0.1.0",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -15,7 +15,7 @@
     "test": "jest"
   },
   "dependencies": {
-    "@gov-platform/types": "*",
+    "@cube-demper/types": "*",
     "bcryptjs": "^2.4.3",
     "drizzle-kit": "^0.20.4",
     "drizzle-orm": "^0.29.5",

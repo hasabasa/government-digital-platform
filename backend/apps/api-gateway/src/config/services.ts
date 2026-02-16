@@ -40,6 +40,30 @@ export const services: ServiceConfig[] = [
     healthCheck: '/api/v1/health',
     prefix: '/files',
   },
+  {
+    name: 'task-service',
+    url: process.env.TASK_SERVICE_URL || 'http://localhost:3005',
+    timeout: 10000,
+    retries: 3,
+    healthCheck: '/api/v1/health',
+    prefix: '/tasks',
+  },
+  {
+    name: 'call-service',
+    url: process.env.CALL_SERVICE_URL || 'http://localhost:3006',
+    timeout: 10000,
+    retries: 2,
+    healthCheck: '/api/v1/health',
+    prefix: '/calls',
+  },
+  {
+    name: 'finance-service',
+    url: process.env.FINANCE_SERVICE_URL || 'http://localhost:3007',
+    timeout: 10000,
+    retries: 3,
+    healthCheck: '/api/v1/health',
+    prefix: '/finance',
+  },
 ];
 
 export const config = {

@@ -7,7 +7,7 @@ import rateLimit from 'express-rate-limit';
 import { routes } from './routes';
 import { logger } from './utils/logger';
 import { config } from './config';
-import { DatabaseConnection, getDefaultConfig } from '@gov-platform/database';
+import { DatabaseConnection, getDefaultConfig } from '@cube-demper/database';
 import { SocketHandler } from './websocket/socket.handler';
 
 export class ChatApp {

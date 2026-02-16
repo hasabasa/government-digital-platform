@@ -7,7 +7,7 @@ import {
   ApiResponse,
   File,
   PaginatedResponse,
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 import multer from 'multer';
 import { config } from '../config';
 

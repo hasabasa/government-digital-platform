@@ -7,7 +7,7 @@ import {
   RefreshTokenRequest,
   ApiResponse,
   LoginResponse,
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 
 export class AuthController {
   private authService = new AuthService();

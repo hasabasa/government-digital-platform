@@ -2,127 +2,171 @@ import React from 'react';
 import { io, Socket } from 'socket.io-client';
 import { useAuthStore } from '../stores/auth.store';
 import { useChatStore } from '../stores/chat.store';
-import { Message, Chat } from '../types';
+import { Message } from '../types';
 import toast from 'react-hot-toast';
 
 interface WebSocketContextType {
   socket: Socket | null;
   isConnected: boolean;
+  sendMessage: (chatId: string, content: string, type?: string) => void;
+  startTyping: (chatId: string) => void;
+  stopTyping: (chatId: string) => void;
+  joinChat: (chatId: string) => void;
+  leaveChat: (chatId: string) => void;
+  typingUsers: Record<string, string[]>;
 }
 
 const WebSocketContext = React.createContext<WebSocketContextType>({
   socket: null,
   isConnected: false,
+  sendMessage: () => {},
+  startTyping: () => {},
+  stopTyping: () => {},
+  joinChat: () => {},
+  leaveChat: () => {},
+  typingUsers: {},
 });
 
-export const useWebSocket = () => {
-  const context = React.useContext(WebSocketContext);
-  if (!context) {
-    throw new Error('useWebSocket must be used within a WebSocketProvider');
-  }
-  return context;
-};
+export const useWebSocket = () => React.useContext(WebSocketContext);
 
 interface WebSocketProviderProps {
   children: React.ReactNode;
 }
 
 export const WebSocketProvider: React.FC<WebSocketProviderProps> = ({ children }) => {
-  const [socket, setSocket] = React.useState<Socket | null>(null);
+  const socketRef = React.useRef<Socket | null>(null);
   const [isConnected, setIsConnected] = React.useState(false);
+  const [typingUsers, setTypingUsers] = React.useState<Record<string, string[]>>({});
   const { token, user } = useAuthStore();
-  const { addMessage, updateChat, activeChat } = useChatStore();
+  const chatStoreRef = React.useRef(useChatStore.getState());
 
+  // Keep store ref fresh
+  React.useEffect(() => {
+    const unsub = useChatStore.subscribe((state) => {
+      chatStoreRef.current = state;
+    });
+    return unsub;
+  }, []);
+
+  // Connect socket — only depends on token/user, NOT on chat store
   React.useEffect(() => {
     if (!token || !user) return;
 
-    // Create socket connection
     const newSocket = io(import.meta.env.VITE_WS_URL || 'http://localhost:8080', {
-      auth: {
-        token,
-      },
+      auth: { token },
       transports: ['websocket'],
+      reconnection: true,
+      reconnectionDelay: 1000,
+      reconnectionAttempts: 10,
     });
 
-    // Connection events
     newSocket.on('connect', () => {
-      console.log('WebSocket connected');
+      console.log('[WS] Connected');
       setIsConnected(true);
     });
 
     newSocket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
+      console.log('[WS] Disconnected');
       setIsConnected(false);
     });
 
     newSocket.on('connect_error', (error) => {
-      console.error('WebSocket connection error:', error);
+      console.error('[WS] Connection error:', error.message);
       setIsConnected(false);
     });
 
-    // Chat events
+    // === Chat events ===
     newSocket.on('message:new', (message: Message) => {
-      console.log('New message received:', message);
-      addMessage(message.chatId, message);
+      chatStoreRef.current.addMessage(message.chatId, message);
 
-      // Show notification if not in active chat
-      if (activeChat?.id !== message.chatId && message.senderId !== user.id) {
-        toast.success(`Новое сообщение от ${message.senderName}`);
+      // Notification if not in active chat
+      const active = chatStoreRef.current.activeChat;
+      if (active?.id !== message.chatId && message.senderId !== user.id) {
+        toast(`Новое сообщение${message.senderName ? ` от ${message.senderName}` : ''}`, { icon: '💬' });
       }
     });
 
-    newSocket.on('message:updated', (data: { chatId: string; messageId: string; updates: Partial<Message> }) => {
-      console.log('Message updated:', data);
-      // TODO: Implement message update in store
+    newSocket.on('message:update', (data: { messageId: string; chatId: string; content: string }) => {
+      chatStoreRef.current.updateMessage(data.chatId, data.messageId, {
+        content: data.content,
+        isEdited: true,
+      });
     });
 
-    newSocket.on('chat:updated', (chat: Chat) => {
-      console.log('Chat updated:', chat);
-      updateChat(chat.id, chat);
+    newSocket.on('message:delete', (data: { messageId: string; chatId: string }) => {
+      chatStoreRef.current.updateMessage(data.chatId, data.messageId, {
+        isDeleted: true,
+      });
     });
 
-    newSocket.on('user:typing', (data: { chatId: string; userId: string; userName: string }) => {
-      console.log('User typing:', data);
-      // TODO: Show typing indicator
+    newSocket.on('message_read', (_data: { messageId: string; userId: string; readAt: string }) => {
+      // Could update read status on messages
     });
 
-    newSocket.on('user:stopped_typing', (data: { chatId: string; userId: string }) => {
-      console.log('User stopped typing:', data);
-      // TODO: Hide typing indicator
+    newSocket.on('typing_started', (data: { userId: string; chatId: string }) => {
+      if (data.userId === user.id) return;
+      setTypingUsers((prev) => {
+        const current = prev[data.chatId] || [];
+        if (current.includes(data.userId)) return prev;
+        return { ...prev, [data.chatId]: [...current, data.userId] };
+      });
     });
 
-    newSocket.on('error', (error: any) => {
-      console.error('WebSocket error:', error);
-      toast.error('Ошибка соединения с сервером');
+    newSocket.on('typing_stopped', (data: { userId: string; chatId: string }) => {
+      setTypingUsers((prev) => {
+        const current = prev[data.chatId] || [];
+        return { ...prev, [data.chatId]: current.filter((id) => id !== data.userId) };
+      });
     });
 
-    setSocket(newSocket);
+    newSocket.on('user_status_changed', (_data: { userId: string; status: string }) => {
+      // Could update user online status
+    });
 
-    // Cleanup on unmount
+    newSocket.on('message_error', (data: { error: string }) => {
+      toast.error(data.error || 'Ошибка отправки');
+    });
+
+    socketRef.current = newSocket;
+
     return () => {
       newSocket.close();
-      setSocket(null);
+      socketRef.current = null;
       setIsConnected(false);
     };
-  }, [token, user, addMessage, updateChat, activeChat]);
+  }, [token, user?.id]);
 
-  // Join active chat room
-  React.useEffect(() => {
-    if (socket && activeChat) {
-      socket.emit('join_chat', { chatId: activeChat.id });
-      console.log('Joined chat:', activeChat.id);
+  // Helper methods
+  const sendMessage = React.useCallback((chatId: string, content: string, type = 'text') => {
+    socketRef.current?.emit('send_message', { chatId, content, type });
+  }, []);
 
-      return () => {
-        socket.emit('leave_chat', { chatId: activeChat.id });
-        console.log('Left chat:', activeChat.id);
-      };
-    }
-  }, [socket, activeChat]);
+  const startTyping = React.useCallback((chatId: string) => {
+    socketRef.current?.emit('typing_start', { chatId });
+  }, []);
 
-  const value = {
-    socket,
+  const stopTyping = React.useCallback((chatId: string) => {
+    socketRef.current?.emit('typing_stop', { chatId });
+  }, []);
+
+  const joinChat = React.useCallback((chatId: string) => {
+    socketRef.current?.emit('join_chat', { chatId });
+  }, []);
+
+  const leaveChat = React.useCallback((chatId: string) => {
+    socketRef.current?.emit('leave_chat', { chatId });
+  }, []);
+
+  const value = React.useMemo(() => ({
+    socket: socketRef.current,
     isConnected,
-  };
+    sendMessage,
+    startTyping,
+    stopTyping,
+    joinChat,
+    leaveChat,
+    typingUsers,
+  }), [isConnected, sendMessage, startTyping, stopTyping, joinChat, leaveChat, typingUsers]);
 
   return (
     <WebSocketContext.Provider value={value}>

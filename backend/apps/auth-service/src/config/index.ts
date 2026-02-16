@@ -12,13 +12,13 @@ export const config = {
     refreshSecret: process.env.JWT_REFRESH_SECRET || 'refresh-secret-key-very-long-and-secure',
     accessExpiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
     refreshExpiresIn: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
-    issuer: process.env.JWT_ISSUER || 'gov-platform',
-    audience: process.env.JWT_AUDIENCE || 'gov-platform-users',
+    issuer: process.env.JWT_ISSUER || 'cube-demper',
+    audience: process.env.JWT_AUDIENCE || 'cube-demper-users',
   },
 
   // Database Configuration
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/gov_platform',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/cube_demper',
     ssl: process.env.NODE_ENV === 'production',
   },
 

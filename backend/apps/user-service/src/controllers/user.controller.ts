@@ -11,7 +11,7 @@ import {
   User,
   Contact,
   PaginatedResponse,
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 
 export interface AuthenticatedRequest extends Request {
   user?: {

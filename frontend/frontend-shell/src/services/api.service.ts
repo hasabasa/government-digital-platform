@@ -130,48 +130,6 @@ class ApiService {
     return response.data;
   }
 
-  // Auth endpoints — legacy ЭЦП
-  async login(credentials: { email: string; digitalSignature: string }) {
-    const response = await this.api.post('/auth/login', credentials);
-    return response.data;
-  }
-
-  async loginWithECP(ecpData: {
-    certificate: {
-      id: string;
-      subjectName: string;
-      issuerName: string;
-      serialNumber: string;
-      validFrom: string;
-      validTo: string;
-      iin?: string;
-      fullName?: string;
-      organization?: string;
-      position?: string;
-      email?: string;
-    };
-    signature: string;
-    timestamp: number;
-  }) {
-    const response = await this.api.post('/auth/login-ecp', ecpData);
-    return response.data;
-  }
-
-  async loginWithEGovMobile(userData: {
-    iin: string;
-    fullName: string;
-    firstName: string;
-    lastName: string;
-    middleName?: string;
-    email?: string;
-    organization?: string;
-    position?: string;
-    avatar?: string;
-  }) {
-    const response = await this.api.post('/auth/login-egov-mobile', userData);
-    return response;
-  }
-
   async refresh(refreshToken: string) {
     const response = await this.api.post('/auth/refresh', { refreshToken });
     return response.data;
@@ -208,8 +166,77 @@ class ApiService {
     return response.data;
   }
 
-  async addContact(userId: string) {
-    const response = await this.api.post('/users/contacts', { userId });
+  async addContact(contactUserId: string, note?: string) {
+    const response = await this.api.post('/users/contacts', { contactUserId, note });
+    return response.data;
+  }
+
+  async getPendingContacts(page = 1, limit = 20) {
+    const response = await this.api.get(`/users/contacts/pending?page=${page}&limit=${limit}`);
+    return response.data;
+  }
+
+  async acceptContact(contactId: string) {
+    const response = await this.api.put(`/users/contacts/${contactId}/accept`);
+    return response.data;
+  }
+
+  async declineContact(contactId: string) {
+    const response = await this.api.delete(`/users/contacts/${contactId}/decline`);
+    return response.data;
+  }
+
+  async removeContact(contactUserId: string) {
+    const response = await this.api.delete(`/users/contacts/${contactUserId}`);
+    return response.data;
+  }
+
+  async blockContact(contactUserId: string) {
+    const response = await this.api.post(`/users/contacts/${contactUserId}/block`);
+    return response.data;
+  }
+
+  async getUsers(page = 1, limit = 20) {
+    const response = await this.api.get(`/users/list?page=${page}&limit=${limit}`);
+    return response.data;
+  }
+
+  async getUserById(userId: string) {
+    const response = await this.api.get(`/users/${userId}`);
+    return response.data;
+  }
+
+  async uploadAvatar(file: File) {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('isPublic', 'true');
+
+    // Upload file
+    const uploadResponse = await this.api.post('/files/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    const fileId = uploadResponse.data?.data?.id || uploadResponse.data?.id;
+
+    // Generate URL
+    const urlResponse = await this.api.post(`/files/${fileId}/url`);
+    const avatarUrl = urlResponse.data?.data?.url || urlResponse.data?.url;
+
+    // Update profile with avatar URL
+    await this.updateUserProfile({ avatar: avatarUrl });
+
+    return { fileId, avatarUrl };
+  }
+
+  async getFileDownloadUrl(fileId: string) {
+    const response = await this.api.post(`/files/${fileId}/url`);
+    return response.data;
+  }
+
+  async getFilePreview(fileId: string, size: 'small' | 'medium' | 'large' = 'medium') {
+    const response = await this.api.get(`/files/${fileId}/preview?size=${size}`, {
+      responseType: 'blob',
+    });
     return response.data;
   }
 
@@ -229,7 +256,7 @@ class ApiService {
     return response.data;
   }
 
-  async sendMessage(data: { chatId: string; content: string; type?: string }) {
+  async sendMessage(data: { chatId: string; content: string; type?: string; fileId?: string }) {
     const response = await this.api.post('/chats/messages', data);
     return response.data;
   }
@@ -274,6 +301,71 @@ class ApiService {
 
   async deleteFile(fileId: string) {
     const response = await this.api.delete(`/files/${fileId}`);
+    return response.data;
+  }
+
+  // Task endpoints
+  async getTasks(filters?: Record<string, any>) {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined) params.append(key, String(value));
+      });
+    }
+    const response = await this.api.get(`/tasks?${params}`);
+    return response.data;
+  }
+
+  async getTaskById(taskId: string) {
+    const response = await this.api.get(`/tasks/${taskId}`);
+    return response.data;
+  }
+
+  async createTask(data: any) {
+    const response = await this.api.post('/tasks', data);
+    return response.data;
+  }
+
+  async updateTask(taskId: string, data: any) {
+    const response = await this.api.put(`/tasks/${taskId}`, data);
+    return response.data;
+  }
+
+  async deleteTask(taskId: string) {
+    const response = await this.api.delete(`/tasks/${taskId}`);
+    return response.data;
+  }
+
+  // Call endpoints
+  async getCalls() {
+    const response = await this.api.get('/calls');
+    return response.data;
+  }
+
+  async initiateCall(data: { type: string; participantIds: string[]; title?: string }) {
+    const response = await this.api.post('/calls', data);
+    return response.data;
+  }
+
+  // Finance endpoints
+  async getFinanceDashboard() {
+    const response = await this.api.get('/finance/dashboard');
+    return response.data;
+  }
+
+  async getTransactions(filters?: Record<string, any>) {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined) params.append(key, String(value));
+      });
+    }
+    const response = await this.api.get(`/finance/transactions?${params}`);
+    return response.data;
+  }
+
+  async createTransaction(data: any) {
+    const response = await this.api.post('/finance/transactions', data);
     return response.data;
   }
 

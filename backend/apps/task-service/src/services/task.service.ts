@@ -1,16 +1,14 @@
 import { eq, and, or, like, sql, desc, asc, inArray, isNull, gte, lte } from 'drizzle-orm';
-import { db } from '@gov-platform/database';
-import { 
-  tasks, 
-  taskAssignments, 
-  taskComments, 
-  taskStatusHistory, 
+import { db } from '@cube-demper/database';
+import {
+  tasks,
+  taskAssignments,
+  taskComments,
+  taskStatusHistory,
   taskChecklist,
   taskFiles,
   users,
-  governmentStructure,
-  appointments,
-  positions,
+  companyStructure,
   type Task,
   type TaskAssignment,
   type TaskComment,
@@ -19,7 +17,7 @@ import {
   type InsertTaskAssignment,
   type InsertTaskComment,
   type InsertTaskChecklist
-} from '@gov-platform/database/schema';
+} from '@cube-demper/database/schema';
 import { PermissionsService } from './permissions.service';
 import {
   CreateTaskRequest,
@@ -35,7 +33,7 @@ import {
   TaskTimelineEvent,
   TaskStatus,
   TaskPriority
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 
 export interface PaginationOptions {
   page: number;
@@ -56,19 +54,19 @@ export class TaskService {
 
   // Task Management
   async getTasks(
-    filters: TaskFilters = {}, 
+    filters: TaskFilters = {},
     pagination: PaginationOptions,
     userId: string
   ): Promise<{ tasks: TaskWithDetails[]; total: number }> {
     const conditions = [eq(tasks.isActive, true)];
-    
+
     // Access control: user can see tasks where they are involved
     const userAccessCondition = or(
       eq(tasks.createdBy, userId),
       eq(tasks.assignedTo, userId),
       eq(tasks.supervisorId, userId),
       sql`EXISTS (
-        SELECT 1 FROM task_assignments ta 
+        SELECT 1 FROM task_assignments ta
         WHERE ta.task_id = tasks.id AND ta.user_id = ${userId}
       )`
     );
@@ -78,35 +76,35 @@ export class TaskService {
     if (filters.status && filters.status.length > 0) {
       conditions.push(inArray(tasks.status, filters.status));
     }
-    
+
     if (filters.priority && filters.priority.length > 0) {
       conditions.push(inArray(tasks.priority, filters.priority));
     }
-    
+
     if (filters.type && filters.type.length > 0) {
       conditions.push(inArray(tasks.type, filters.type));
     }
-    
+
     if (filters.assignedTo) {
       conditions.push(eq(tasks.assignedTo, filters.assignedTo));
     }
-    
+
     if (filters.createdBy) {
       conditions.push(eq(tasks.createdBy, filters.createdBy));
     }
-    
+
     if (filters.organizationId) {
       conditions.push(eq(tasks.organizationId, filters.organizationId));
     }
-    
+
     if (filters.dueDateFrom) {
       conditions.push(gte(tasks.dueDate, filters.dueDateFrom));
     }
-    
+
     if (filters.dueDateTo) {
       conditions.push(lte(tasks.dueDate, filters.dueDateTo));
     }
-    
+
     if (filters.isOverdue) {
       conditions.push(
         and(
@@ -115,16 +113,16 @@ export class TaskService {
         )
       );
     }
-    
+
     if (filters.hasMyAssignments) {
       conditions.push(
         sql`EXISTS (
-          SELECT 1 FROM task_assignments ta 
+          SELECT 1 FROM task_assignments ta
           WHERE ta.task_id = tasks.id AND ta.user_id = ${userId} AND ta.status != 'declined'
         )`
       );
     }
-    
+
     if (filters.search) {
       conditions.push(
         or(
@@ -140,7 +138,7 @@ export class TaskService {
       .from(tasks)
       .where(and(...conditions));
 
-    // Get paginated results with all related data
+    // Get paginated results — join users directly (no appointments/positions)
     const offset = (pagination.page - 1) * pagination.limit;
     const tasksResult = await db
       .select({
@@ -149,19 +147,19 @@ export class TaskService {
           id: sql`creator.id`,
           firstName: sql`creator.first_name`,
           lastName: sql`creator.last_name`,
-          position: sql`creator_pos.title`,
+          position: sql`creator.position`,
         },
         assignee: {
           id: sql`assignee.id`,
           firstName: sql`assignee.first_name`,
           lastName: sql`assignee.last_name`,
-          position: sql`assignee_pos.title`,
+          position: sql`assignee.position`,
         },
         supervisor: {
           id: sql`supervisor.id`,
           firstName: sql`supervisor.first_name`,
           lastName: sql`supervisor.last_name`,
-          position: sql`supervisor_pos.title`,
+          position: sql`supervisor.position`,
         },
         organization: {
           id: sql`org.id`,
@@ -171,24 +169,9 @@ export class TaskService {
       })
       .from(tasks)
       .leftJoin(users.as('creator'), eq(tasks.createdBy, sql`creator.id`))
-      .leftJoin(appointments.as('creator_app'), and(
-        eq(sql`creator_app.user_id`, sql`creator.id`),
-        eq(sql`creator_app.is_current`, true)
-      ))
-      .leftJoin(positions.as('creator_pos'), eq(sql`creator_app.position_id`, sql`creator_pos.id`))
       .leftJoin(users.as('assignee'), eq(tasks.assignedTo, sql`assignee.id`))
-      .leftJoin(appointments.as('assignee_app'), and(
-        eq(sql`assignee_app.user_id`, sql`assignee.id`),
-        eq(sql`assignee_app.is_current`, true)
-      ))
-      .leftJoin(positions.as('assignee_pos'), eq(sql`assignee_app.position_id`, sql`assignee_pos.id`))
       .leftJoin(users.as('supervisor'), eq(tasks.supervisorId, sql`supervisor.id`))
-      .leftJoin(appointments.as('supervisor_app'), and(
-        eq(sql`supervisor_app.user_id`, sql`supervisor.id`),
-        eq(sql`supervisor_app.is_current`, true)
-      ))
-      .leftJoin(positions.as('supervisor_pos'), eq(sql`supervisor_app.position_id`, sql`supervisor_pos.id`))
-      .leftJoin(governmentStructure.as('org'), eq(tasks.organizationId, sql`org.id`))
+      .leftJoin(companyStructure.as('org'), eq(tasks.organizationId, sql`org.id`))
       .where(and(...conditions))
       .orderBy(desc(tasks.createdAt))
       .limit(pagination.limit)
@@ -198,10 +181,10 @@ export class TaskService {
     const enrichedTasks = await Promise.all(
       tasksResult.map(async (row) => {
         const taskId = row.task.id;
-        
+
         // Get assignments
         const assignments = await this.getTaskAssignments(taskId);
-        
+
         // Get counts
         const [commentsCount, filesCount, checklistStats] = await Promise.all([
           this.getCommentsCount(taskId),
@@ -245,7 +228,7 @@ export class TaskService {
 
     const result = await this.getTasks({ search: undefined }, { page: 1, limit: 1 }, userId);
     const task = result.tasks.find(t => t.id === taskId);
-    
+
     if (!task) return null;
 
     // Get additional details
@@ -263,7 +246,7 @@ export class TaskService {
 
   async createTask(data: CreateTaskRequest & { createdBy: string }): Promise<Task> {
     // Check if user has permission to create tasks
-    await this.checkCreateTaskPermission(data.createdBy, data.organizationId);
+    await this.checkCreateTaskPermission(data.createdBy);
 
     const insertData: InsertTask = {
       ...data,
@@ -290,8 +273,8 @@ export class TaskService {
   }
 
   async updateTask(
-    taskId: string, 
-    data: UpdateTaskRequest, 
+    taskId: string,
+    data: UpdateTaskRequest,
     userId: string
   ): Promise<Task> {
     // Check permissions
@@ -317,7 +300,7 @@ export class TaskService {
     // Log status change if status was updated
     if (data.status && oldStatus !== newStatus) {
       await this.logStatusChange(taskId, userId, oldStatus, newStatus, 'Status updated');
-      
+
       // Auto-complete checklist if task is completed
       if (newStatus === 'completed') {
         await this.markAllChecklistItemsCompleted(taskId, userId);
@@ -344,13 +327,13 @@ export class TaskService {
 
   // Task Assignments
   async assignTask(
-    taskId: string, 
+    taskId: string,
     data: AssignTaskRequest & { assignedBy: string }
   ): Promise<TaskAssignment> {
-    // Check if user can assign tasks to this specific user
-    const canAssign = await this.permissionsService.canAssignTaskToUser(data.assignedBy, data.userId);
-    if (!canAssign) {
-      throw new Error('Permission denied: Cannot assign tasks to this user');
+    // Check role-based permission
+    const perms = await this.permissionsService.getUserPermissions(data.assignedBy);
+    if (!perms.canAssignTasks) {
+      throw new Error('Permission denied: Cannot assign tasks');
     }
 
     // Check task-level assign permission
@@ -580,7 +563,7 @@ export class TaskService {
     }
 
     const updateData: any = { ...data, updatedAt: new Date() };
-    
+
     if (data.isCompleted) {
       updateData.completedBy = userId;
       updateData.completedAt = new Date();
@@ -617,12 +600,12 @@ export class TaskService {
   // Statistics and Reports
   async getTaskStats(userId: string, options: TaskStatsOptions = {}): Promise<TaskStats> {
     const conditions = [eq(tasks.isActive, true)];
-    
+
     // Add organization filter if provided
     if (options.organizationId) {
       conditions.push(eq(tasks.organizationId, options.organizationId));
     }
-    
+
     // Add period filter
     if (options.period) {
       const daysAgo = this.parsePeriod(options.period);
@@ -635,7 +618,7 @@ export class TaskService {
       eq(tasks.assignedTo, userId),
       eq(tasks.supervisorId, userId),
       sql`EXISTS (
-        SELECT 1 FROM task_assignments ta 
+        SELECT 1 FROM task_assignments ta
         WHERE ta.task_id = tasks.id AND ta.user_id = ${userId}
       )`
     );
@@ -669,10 +652,10 @@ export class TaskService {
     for (const row of statsQuery) {
       const count = parseInt(row.total.toString());
       total += count;
-      
+
       byStatus[row.status] = (byStatus[row.status] || 0) + count;
       byPriority[row.priority] = (byPriority[row.priority] || 0) + count;
-      
+
       if (row.isOverdue) overdue += count;
       if (row.dueSoon) dueSoon += count;
       if (row.createdByUser) created += count;
@@ -692,8 +675,32 @@ export class TaskService {
     };
   }
 
-  async getAssignableUsers(userId: string, organizationId?: string) {
-    return this.permissionsService.getAssignableUsers(userId, organizationId);
+  async getAssignableUsers(userId: string) {
+    // Simple approach: admins/managers can assign to any active user
+    const perms = await this.permissionsService.getUserPermissions(userId);
+    if (!perms.canAssignTasks) {
+      return [];
+    }
+
+    const activeUsers = await db
+      .select({
+        id: users.id,
+        firstName: users.firstName,
+        lastName: users.lastName,
+        position: users.position,
+        department: users.department,
+      })
+      .from(users)
+      .where(eq(users.status, 'active'));
+
+    return activeUsers.map(u => ({
+      id: u.id,
+      firstName: u.firstName,
+      lastName: u.lastName,
+      position: u.position || 'No position',
+      department: u.department || 'No department',
+      canAssign: true,
+    }));
   }
 
   async getTaskTimeline(taskId: string, userId: string): Promise<TaskTimelineEvent[]> {
@@ -732,7 +739,7 @@ export class TaskService {
     const allEvents = [...statusHistory, ...comments];
     allEvents.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
-    // Enrich with user data
+    // Enrich with user data (direct from users table)
     const enrichedEvents = await Promise.all(
       allEvents.map(async (event) => {
         const [user] = await db
@@ -761,6 +768,10 @@ export class TaskService {
 
   // Helper methods
   private async checkTaskAccess(taskId: string, userId: string): Promise<boolean> {
+    // Admins can access all tasks
+    const perms = await this.permissionsService.getUserPermissions(userId);
+    if (perms.role === 'admin') return true;
+
     const result = await db
       .select({ count: sql`count(*)` })
       .from(tasks)
@@ -771,7 +782,7 @@ export class TaskService {
           eq(tasks.assignedTo, userId),
           eq(tasks.supervisorId, userId),
           sql`EXISTS (
-            SELECT 1 FROM task_assignments ta 
+            SELECT 1 FROM task_assignments ta
             WHERE ta.task_id = ${taskId} AND ta.user_id = ${userId}
           )`
         )
@@ -780,20 +791,18 @@ export class TaskService {
     return parseInt(result[0].count.toString()) > 0;
   }
 
-  private async checkCreateTaskPermission(userId: string, organizationId?: string): Promise<void> {
+  private async checkCreateTaskPermission(userId: string): Promise<void> {
     const permissions = await this.permissionsService.getUserPermissions(userId);
-    
+
     if (!permissions.canCreateTasks) {
       throw new Error('Permission denied: Cannot create tasks');
-    }
-
-    // Если указана организация, проверить права на неё
-    if (organizationId && !permissions.managedOrganizationIds.includes(organizationId)) {
-      throw new Error('Permission denied: Cannot create tasks in this organization');
     }
   }
 
   private async checkEditPermission(taskId: string, userId: string): Promise<boolean> {
+    const perms = await this.permissionsService.getUserPermissions(userId);
+    if (perms.role === 'admin') return true;
+
     const [task] = await db
       .select()
       .from(tasks)
@@ -822,6 +831,9 @@ export class TaskService {
   }
 
   private async checkDeletePermission(taskId: string, userId: string): Promise<boolean> {
+    const perms = await this.permissionsService.getUserPermissions(userId);
+    if (perms.role === 'admin') return true;
+
     const [task] = await db
       .select()
       .from(tasks)
@@ -838,7 +850,7 @@ export class TaskService {
 
   private async getUserTaskPermissions(taskId: string, userId: string) {
     const taskPermissions = await this.permissionsService.getTaskPermissions(taskId, userId);
-    
+
     return {
       canEdit: taskPermissions.canEdit,
       canDelete: taskPermissions.canDelete,
@@ -896,7 +908,6 @@ export class TaskService {
   }
 
   private async getSubtasks(taskId: string, userId: string): Promise<Task[]> {
-    // Get subtasks where parent_task_id = taskId
     return db
       .select()
       .from(tasks)
@@ -909,7 +920,6 @@ export class TaskService {
 
   private async getTaskDependencies(taskId: string, userId: string): Promise<Task[]> {
     // This would require parsing the depends_on_task_ids JSON field
-    // For now, return empty array
     return [];
   }
 
@@ -947,7 +957,7 @@ export class TaskService {
 
   private parsePeriod(period: string): number {
     const match = period.match(/^(\d+)([dmy])$/);
-    if (!match) return 30; // default to 30 days
+    if (!match) return 30;
 
     const [, num, unit] = match;
     const number = parseInt(num);

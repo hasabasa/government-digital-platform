@@ -16,7 +16,7 @@ export const userStatusEnum = pgEnum('user_status', [
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: varchar('email', { length: 255 }).notNull().unique(),
-  passwordHash: text('password_hash'), // bcrypt hash — null for legacy ЭЦП users
+  passwordHash: text('password_hash'), // bcrypt hash — null for SSO users
   firstName: varchar('first_name', { length: 100 }).notNull(),
   lastName: varchar('last_name', { length: 100 }).notNull(),
   middleName: varchar('middle_name', { length: 100 }),

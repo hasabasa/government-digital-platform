@@ -3,19 +3,16 @@ import { BaseEntitySchema } from './common';
 
 export const UserRoleSchema = z.enum([
   'admin',
-  'moderator',
-  'user',
-  'government_official',
-  'department_head',
-  'citizen'
+  'manager',
+  'employee'
 ]);
 
 export type UserRole = z.infer<typeof UserRoleSchema>;
 
+// Email/password login
 export const LoginRequestSchema = z.object({
-  digitalSignature: z.string().min(1),
-  publicKey: z.string().min(1),
-  timestamp: z.number(),
+  email: z.string().email(),
+  password: z.string().min(6),
 });
 
 export type LoginRequest = z.infer<typeof LoginRequestSchema>;
@@ -53,11 +50,11 @@ export const SessionSchema = BaseEntitySchema.extend({
 
 export type Session = z.infer<typeof SessionSchema>;
 
-export const DigitalSignatureSchema = z.object({
-  certificate: z.string(),
-  signature: z.string(),
-  timestamp: z.number(),
-  algorithm: z.string().default('GOST_3410_2012_256'),
+export const RegisterRequestSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(6),
+  firstName: z.string().min(1),
+  lastName: z.string().min(1),
 });
 
-export type DigitalSignature = z.infer<typeof DigitalSignatureSchema>;
+export type RegisterRequest = z.infer<typeof RegisterRequestSchema>;

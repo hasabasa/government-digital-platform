@@ -37,7 +37,7 @@ export const config: Config = ConfigSchema.parse({
   port: parseInt(process.env.PORT || '3005'),
   nodeEnv: process.env.NODE_ENV || 'development',
   
-  databaseUrl: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/gov_platform',
+  databaseUrl: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/cube_demper',
   redisUrl: process.env.REDIS_URL || 'redis://localhost:6379',
   
   jwtSecret: process.env.JWT_SECRET || 'task-service-secret-key',

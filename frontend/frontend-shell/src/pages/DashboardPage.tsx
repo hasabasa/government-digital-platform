@@ -76,10 +76,8 @@ const DashboardPage: React.FC = () => {
     <MainLayout>
       <div className="h-full overflow-auto bg-[#0e1621]">
         {/* Header */}
-        <div className="bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-6 py-5">
-          <h1 className="text-xl font-semibold text-white mb-1">
-            Привет, {user?.firstName || 'Коллега'}! 👋
-          </h1>
+        <div className="bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-4 md:px-6 py-4">
+          <h1 className="text-lg font-semibold text-white">Главная</h1>
           <p className="text-sm text-[#6c7883]">
             {new Date().toLocaleDateString('ru-RU', {
               weekday: 'long',
@@ -89,7 +87,7 @@ const DashboardPage: React.FC = () => {
           </p>
         </div>
 
-        <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
           {/* Quick Actions Grid */}
           <div className="grid grid-cols-2 gap-3">
             {quickActions.map((action) => {
@@ -126,7 +124,7 @@ const DashboardPage: React.FC = () => {
             </div>
 
             <div className="p-4">
-              <div className="grid grid-cols-3 gap-4 mb-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-4">
                 <div>
                   <p className="text-xs text-[#6c7883]">Выручка</p>
                   <p className="text-lg font-bold text-white tabular-nums">{formatMoney(totalRevenue)}</p>
@@ -142,16 +140,16 @@ const DashboardPage: React.FC = () => {
               </div>
 
               {/* Shareholder mini-cards */}
-              <div className="flex gap-2">
+              <div className="grid grid-cols-3 gap-2">
                 {Object.entries(shareholderTotals).map(([name, amount]) => (
                   <div
                     key={name}
-                    className="flex-1 bg-[#232e3c] rounded-lg p-2.5 text-center"
+                    className="bg-[#232e3c] rounded-lg p-2.5 text-center"
                   >
-                    <p className="text-[10px] text-[#6c7883] uppercase tracking-wider">
+                    <p className="text-[10px] sm:text-xs text-[#6c7883] uppercase tracking-wider truncate">
                       {SHAREHOLDER_LABELS[name]}
                     </p>
-                    <p className={`text-sm font-bold tabular-nums mt-0.5 ${shareholderColors[name] || 'text-white'}`}>
+                    <p className={`text-xs sm:text-sm font-bold tabular-nums mt-0.5 ${shareholderColors[name] || 'text-white'}`}>
                       {formatMoney(amount)}
                     </p>
                   </div>

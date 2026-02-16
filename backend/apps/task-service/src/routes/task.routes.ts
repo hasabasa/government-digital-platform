@@ -12,7 +12,7 @@ import {
   UpdateChecklistItemRequestSchema,
   TaskFiltersSchema,
   PaginationSchema,
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 import { z } from 'zod';
 
 const router = Router();

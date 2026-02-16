@@ -8,7 +8,7 @@ export const config = {
   
   // Database Configuration
   database: {
-    url: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/gov_platform',
+    url: process.env.DATABASE_URL || 'postgresql://postgres:password@localhost:5432/cube_demper',
     ssl: process.env.NODE_ENV === 'production',
   },
 

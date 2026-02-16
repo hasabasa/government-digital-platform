@@ -1,5 +1,5 @@
 {
-  "name": "@gov-platform/auth-service",
+  "name": "@cube-demper/auth-service",
   "version": "0.1.0",
   "main": "dist/index.js",
   "scripts": {
@@ -11,8 +11,8 @@
     "test:watch": "vitest --watch"
   },
   "dependencies": {
-    "@gov-platform/database": "*",
-    "@gov-platform/types": "*",
+    "@cube-demper/database": "*",
+    "@cube-demper/types": "*",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "crypto": "^1.0.1",

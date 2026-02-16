@@ -2,7 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from '../services/chat.service';
 import { CacheService } from '../services/cache.service';
 import { logger } from '../utils/logger';
-import { WebSocketEvent } from '@gov-platform/types';
+import { WebSocketEvent } from '@cube-demper/types';
 import axios from 'axios';
 import { config } from '../config';
 

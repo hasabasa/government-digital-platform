@@ -1,36 +1,34 @@
 import { eq, and, or, sql, desc } from 'drizzle-orm';
-import { db } from '@gov-platform/database';
-import { 
+import { db } from '@cube-demper/database';
+import {
   calls,
   callParticipants,
   webrtcRooms,
   callRecordings,
   users,
-  appointments,
-  positions,
   type Call,
   type CallParticipant,
   type WebRTCRoom,
   type InsertCall,
   type InsertCallParticipant,
   type InsertWebRTCRoom
-} from '@gov-platform/database/schema';
+} from '@cube-demper/database/schema';
 import {
   CreateCallRequest,
   CallWithDetails,
   CallType,
   CallStatus,
   ParticipantStatus
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 import { v4 as uuidv4 } from 'uuid';
+
+type UserRole = 'admin' | 'manager' | 'employee';
 
 export interface CallPermissions {
   canInitiateCalls: boolean;
   canJoinCalls: boolean;
   canModerate: boolean;
   canRecord: boolean;
-  allowedParticipants: string[];
-  organizationIds: string[];
 }
 
 export class WebRTCService {
@@ -45,7 +43,7 @@ export class WebRTCService {
 
     // Create WebRTC room
     const roomId = `room_${uuidv4()}`;
-    
+
     const callData: InsertCall = {
       ...data,
       mediasoupRoomId: roomId,
@@ -75,7 +73,7 @@ export class WebRTCService {
     // Update participant status
     const [participant] = await db
       .update(callParticipants)
-      .set({ 
+      .set({
         status: 'joined',
         joinedAt: new Date(),
       })
@@ -97,7 +95,7 @@ export class WebRTCService {
     if (parseInt(activeParticipants[0].count.toString()) === 1) {
       await db
         .update(calls)
-        .set({ 
+        .set({
           status: 'active',
           startedAt: new Date(),
         })
@@ -110,7 +108,7 @@ export class WebRTCService {
   async leaveCall(callId: string, userId: string): Promise<void> {
     await db
       .update(callParticipants)
-      .set({ 
+      .set({
         status: 'left',
         leftAt: new Date(),
       })
@@ -131,10 +129,10 @@ export class WebRTCService {
     }
 
     const endTime = new Date();
-    
+
     await db
       .update(calls)
-      .set({ 
+      .set({
         status: 'ended',
         endedAt: endTime,
       })
@@ -143,7 +141,7 @@ export class WebRTCService {
     // Update all active participants
     await db
       .update(callParticipants)
-      .set({ 
+      .set({
         status: 'left',
         leftAt: endTime,
       })
@@ -156,50 +154,39 @@ export class WebRTCService {
     await this.closeWebRTCRoom(callId);
   }
 
-  // Permission Checks
+  // Permission Checks — simple role-based using users table directly
   private async getUserCallPermissions(userId: string): Promise<CallPermissions> {
-    // Get user's position
-    const [userInfo] = await db
-      .select({
-        position: positions,
-        organizationId: sql`appointments.organization_id`,
-      })
-      .from(appointments)
-      .leftJoin(positions, eq(appointments.positionId, positions.id))
-      .where(and(
-        eq(appointments.userId, userId),
-        eq(appointments.isCurrent, true)
-      ))
+    const [user] = await db
+      .select({ role: users.role })
+      .from(users)
+      .where(eq(users.id, userId))
       .limit(1);
 
-    if (!userInfo?.position) {
+    if (!user) {
       return {
         canInitiateCalls: false,
-        canJoinCalls: true,
+        canJoinCalls: false,
         canModerate: false,
         canRecord: false,
-        allowedParticipants: [],
-        organizationIds: [],
       };
     }
 
-    const position = userInfo.position;
+    const role = user.role as UserRole;
 
-    // Только руководители могут инициировать звонки
-    const canInitiateCalls = position.isManagerial || position.canManageSubordinates;
+    // admin and manager can initiate, moderate, and record calls
+    // all authenticated users can join calls they are invited to
+    const isPrivileged = role === 'admin' || role === 'manager';
 
     return {
-      canInitiateCalls,
+      canInitiateCalls: isPrivileged,
       canJoinCalls: true,
-      canModerate: canInitiateCalls,
-      canRecord: canInitiateCalls,
-      allowedParticipants: [], // Would get from hierarchy service
-      organizationIds: [userInfo.organizationId],
+      canModerate: isPrivileged,
+      canRecord: isPrivileged,
     };
   }
 
   private async canUserJoinCall(callId: string, userId: string): Promise<boolean> {
-    // Check if user is invited
+    // Any user who has been added as a participant can join
     const [participant] = await db
       .select()
       .from(callParticipants)
@@ -221,10 +208,10 @@ export class WebRTCService {
 
     if (!call) return false;
 
-    // Call initiator can moderate
+    // Call initiator can always moderate
     if (call.initiatorId === userId) return true;
 
-    // Check if user has moderator permissions
+    // Otherwise check role-based permissions
     const permissions = await this.getUserCallPermissions(userId);
     return permissions.canModerate;
   }
@@ -265,7 +252,7 @@ export class WebRTCService {
     if (parseInt(activeParticipants[0].count.toString()) === 0) {
       await db
         .update(calls)
-        .set({ 
+        .set({
           status: 'ended',
           endedAt: new Date(),
         })
@@ -278,14 +265,14 @@ export class WebRTCService {
   private async closeWebRTCRoom(callId: string): Promise<void> {
     await db
       .update(webrtcRooms)
-      .set({ 
+      .set({
         isActive: false,
         closedAt: new Date(),
       })
       .where(eq(webrtcRooms.callId, callId));
   }
 
-  // Quick implementation for basic functionality
+  // Get calls for a user
   async getCalls(userId: string): Promise<CallWithDetails[]> {
     const result = await db
       .select({

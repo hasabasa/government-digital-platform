@@ -29,7 +29,7 @@ interface ChannelManagerProps {
 interface Channel {
   id: string;
   name: string;
-  type: 'announcement' | 'ministry' | 'department' | 'division' | 'general';
+  type: 'announcement' | 'company' | 'department' | 'team' | 'general';
   isPinned: boolean;
   hasUnread: boolean;
   unreadCount?: number;
@@ -55,31 +55,31 @@ const mockChannels: Channel[] = [
     isPrivate: false,
     isMuted: false,
     isSubscribed: true,
-    description: 'Официальные объявления и новости правительства',
-    memberCount: 1247,
-    organizationPath: 'Правительство РК',
-    createdAt: '2022-01-01',
+    description: 'Объявления и новости компании Cube Demper',
+    memberCount: 12,
+    organizationPath: 'Cube Demper',
+    createdAt: '2024-01-01',
     lastActivity: '2 мин назад'
   },
   {
-    id: 'ministry-finance',
-    name: 'Министерство финансов',
-    type: 'ministry',
+    id: 'dev-team',
+    name: 'Разработка',
+    type: 'department',
     isPinned: true,
     hasUnread: true,
     unreadCount: 3,
     isPrivate: false,
     isMuted: false,
     isSubscribed: true,
-    description: 'Обсуждения по финансовой политике и бюджету',
-    memberCount: 156,
-    organizationPath: 'Правительство РК → Министерство финансов',
-    createdAt: '2022-01-15',
+    description: 'Обсуждения по разработке продуктов',
+    memberCount: 5,
+    organizationPath: 'Cube Demper → Разработка',
+    createdAt: '2024-01-15',
     lastActivity: '15 мин назад'
   },
   {
-    id: 'dept-budget',
-    name: 'Департамент бюджета',
+    id: 'sales-team',
+    name: 'Продажи',
     type: 'department',
     isPinned: false,
     hasUnread: false,
@@ -87,31 +87,31 @@ const mockChannels: Channel[] = [
     isPrivate: false,
     isMuted: true,
     isSubscribed: true,
-    description: 'Бюджетное планирование и исполнение',
-    memberCount: 34,
-    organizationPath: 'Правительство РК → Министерство финансов → Департамент бюджета',
-    createdAt: '2022-02-01',
+    description: 'Планирование продаж и работа с клиентами',
+    memberCount: 4,
+    organizationPath: 'Cube Demper → Продажи',
+    createdAt: '2024-02-01',
     lastActivity: '1 час назад'
   },
   {
-    id: 'div-analytics',
-    name: 'Отдел аналитики',
-    type: 'division',
+    id: 'marketing-team',
+    name: 'Маркетинг',
+    type: 'team',
     isPinned: false,
     hasUnread: true,
     unreadCount: 5,
     isPrivate: false,
     isMuted: false,
     isSubscribed: true,
-    description: 'Аналитические отчеты и исследования',
-    memberCount: 12,
-    organizationPath: 'Правительство РК → Министерство финансов → Департамент бюджета → Отдел аналитики',
-    createdAt: '2022-03-01',
+    description: 'Маркетинговые кампании и аналитика',
+    memberCount: 3,
+    organizationPath: 'Cube Demper → Маркетинг',
+    createdAt: '2024-03-01',
     lastActivity: '30 мин назад'
   },
   {
-    id: 'project-digital',
-    name: 'Проект "Цифровизация"',
+    id: 'project-alpha',
+    name: 'Проект Alpha',
     type: 'general',
     isPinned: false,
     hasUnread: true,
@@ -119,15 +119,15 @@ const mockChannels: Channel[] = [
     isPrivate: true,
     isMuted: false,
     isSubscribed: true,
-    description: 'Частный канал для проекта цифровизации государственных услуг',
-    memberCount: 8,
-    organizationPath: 'Межведомственная рабочая группа',
-    createdAt: '2023-01-01',
+    description: 'Частный канал для проекта Alpha',
+    memberCount: 4,
+    organizationPath: 'Кросс-команда',
+    createdAt: '2024-06-01',
     lastActivity: '5 мин назад'
   },
   {
-    id: 'emergency-response',
-    name: 'Антикризисное управление',
+    id: 'finance-ops',
+    name: 'Финансы',
     type: 'general',
     isPinned: false,
     hasUnread: false,
@@ -135,10 +135,10 @@ const mockChannels: Channel[] = [
     isPrivate: true,
     isMuted: false,
     isSubscribed: false,
-    description: 'Координация действий в кризисных ситуациях',
-    memberCount: 25,
-    organizationPath: 'Правительство РК → Специальные службы',
-    createdAt: '2023-06-01',
+    description: 'Финансовые операции и отчётность',
+    memberCount: 3,
+    organizationPath: 'Cube Demper → Руководство',
+    createdAt: '2024-01-01',
     lastActivity: '2 дня назад'
   }
 ];
@@ -201,9 +201,9 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({
   const getChannelIcon = (type: string) => {
     switch (type) {
       case 'announcement': return Crown;
-      case 'ministry': return Building;
+      case 'company': return Building;
       case 'department': return Hash;
-      case 'division': return Hash;
+      case 'team': return Hash;
       case 'general': return Hash;
       default: return Hash;
     }
@@ -212,9 +212,9 @@ export const ChannelManager: React.FC<ChannelManagerProps> = ({
   const getChannelTypeColor = (type: string) => {
     switch (type) {
       case 'announcement': return 'text-yellow-600 dark:text-yellow-400';
-      case 'ministry': return 'text-purple-600 dark:text-purple-400';
+      case 'company': return 'text-purple-600 dark:text-purple-400';
       case 'department': return 'text-blue-600 dark:text-blue-400';
-      case 'division': return 'text-green-600 dark:text-green-400';
+      case 'team': return 'text-green-600 dark:text-green-400';
       case 'general': return 'text-gray-600 dark:text-gray-400';
       default: return 'text-gray-600 dark:text-gray-400';
     }

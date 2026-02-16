@@ -1,5 +1,5 @@
-import { DatabaseConnection } from '@gov-platform/database';
-import { User } from '@gov-platform/types';
+import { DatabaseConnection } from '@cube-demper/database';
+import { User } from '@cube-demper/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 

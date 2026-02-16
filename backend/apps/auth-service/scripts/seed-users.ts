@@ -3,7 +3,7 @@
  * Запуск: npx tsx scripts/seed-users.ts
  */
 import { DatabaseConnection } from '../src/database/connection';
-import { users } from '@gov-platform/database';
+import { users } from '@cube-demper/database';
 import { CryptoUtils } from '../src/utils/crypto';
 
 const USERS = [

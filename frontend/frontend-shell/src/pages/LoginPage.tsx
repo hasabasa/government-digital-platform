@@ -7,47 +7,58 @@ import toast from 'react-hot-toast';
 
 type AuthTab = 'login' | 'register';
 
-// === Быстрые аккаунты (demo) ===
 const DEMO_ACCOUNTS = [
   {
-    id: '1',
-    email: 'Hasenhankazimov@gmail.com',
-    firstName: 'Хасенхан',
-    lastName: 'Казимов',
-    role: 'admin',
-    position: 'Управляющий партнёр',
-    initials: 'ХК',
-    color: 'from-blue-500 to-purple-600',
+    email: 'khasenkhan@cube.kz',
+    password: 'Khasen2025!',
+    user: {
+      id: 'user-1',
+      email: 'khasenkhan@cube.kz',
+      firstName: 'Хасенхан',
+      lastName: 'Казимов',
+      role: 'admin' as const,
+      position: 'Управляющий партнёр',
+      organization: 'Cube Demper',
+    },
   },
   {
-    id: '2',
-    email: 'hamitov.adil04@gmail.com',
-    firstName: 'Адиль',
-    lastName: 'Хамитов',
-    role: 'admin',
-    position: 'Партнёр',
-    initials: 'АХ',
-    color: 'from-emerald-500 to-teal-600',
+    email: 'adil@cube.kz',
+    password: 'Adil2025!',
+    user: {
+      id: 'user-2',
+      email: 'adil@cube.kz',
+      firstName: 'Адиль',
+      lastName: 'Хамитов',
+      role: 'manager' as const,
+      position: 'Партнёр',
+      organization: 'Cube Demper',
+    },
   },
   {
-    id: '3',
-    email: 'azamatbekkhaliev@gmail.com',
-    firstName: 'Азамат',
-    lastName: 'Бекхалиев',
-    role: 'admin',
-    position: 'Партнёр',
-    initials: 'АБ',
-    color: 'from-orange-500 to-red-600',
+    email: 'azamat@cube.kz',
+    password: 'Azamat2025!',
+    user: {
+      id: 'user-3',
+      email: 'azamat@cube.kz',
+      firstName: 'Азамат',
+      lastName: 'Бекхалиев',
+      role: 'manager' as const,
+      position: 'Партнёр',
+      organization: 'Cube Demper',
+    },
   },
   {
-    id: '4',
-    email: 'makazanalpamys@gmail.com',
-    firstName: 'Алпамыс',
-    lastName: 'Мақажан',
-    role: 'employee',
-    position: 'Разработчик',
-    initials: 'АМ',
-    color: 'from-cyan-500 to-blue-600',
+    email: 'alpamys@cube.kz',
+    password: 'Alpamys2025!',
+    user: {
+      id: 'user-4',
+      email: 'alpamys@cube.kz',
+      firstName: 'Алпамыс',
+      lastName: 'Мақажан',
+      role: 'employee' as const,
+      position: 'Разработчик',
+      organization: 'Cube Demper',
+    },
   },
 ];
 
@@ -76,9 +87,18 @@ export const LoginPage: React.FC = () => {
       setAuth(user, accessToken, refreshToken);
       toast.success(`Добро пожаловать, ${user.firstName}!`);
       navigate('/');
-    } catch (error: any) {
-      const msg = error.response?.data?.error || 'Ошибка входа';
-      toast.error(msg);
+    } catch {
+      // Если бэкенд недоступен — проверяем демо-аккаунты
+      const demo = DEMO_ACCOUNTS.find(
+        (a) => a.email === email && a.password === password
+      );
+      if (demo) {
+        setAuth(demo.user, 'demo-token', 'demo-refresh');
+        toast.success(`Добро пожаловать, ${demo.user.firstName}!`);
+        navigate('/');
+      } else {
+        toast.error('Неверный email или пароль');
+      }
     } finally {
       setLoading(false);
     }
@@ -110,22 +130,6 @@ export const LoginPage: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleQuickLogin = (account: typeof DEMO_ACCOUNTS[0]) => {
-    const mockUser = {
-      id: account.id,
-      email: account.email,
-      firstName: account.firstName,
-      lastName: account.lastName,
-      role: account.role,
-      position: account.position,
-      avatar: undefined,
-      isOnline: true,
-    };
-    setAuth(mockUser, 'mock-token', 'mock-refresh-token');
-    toast.success(`Добро пожаловать, ${account.firstName}!`);
-    navigate('/');
   };
 
   return (
@@ -242,36 +246,6 @@ export const LoginPage: React.FC = () => {
             )}
           </button>
         </form>
-
-        {/* Divider */}
-        <div className="flex items-center gap-3 my-4">
-          <div className="flex-1 h-px bg-[#232e3c]" />
-          <span className="text-xs text-[#6c7883]">быстрый вход</span>
-          <div className="flex-1 h-px bg-[#232e3c]" />
-        </div>
-
-        {/* Quick Login Accounts */}
-        <div className="grid grid-cols-2 gap-2">
-          {DEMO_ACCOUNTS.map((account) => (
-            <button
-              key={account.id}
-              onClick={() => handleQuickLogin(account)}
-              className="flex items-center gap-2.5 bg-[#17212b] border border-[#232e3c] hover:border-[#3a73b8]/50 rounded-xl px-3 py-2.5 transition-all active:scale-[0.97] group"
-            >
-              <div className={`w-8 h-8 rounded-lg bg-gradient-to-br ${account.color} flex items-center justify-center flex-shrink-0`}>
-                <span className="text-white text-xs font-bold">{account.initials}</span>
-              </div>
-              <div className="text-left min-w-0">
-                <p className="text-xs font-medium text-white truncate group-hover:text-blue-300 transition-colors">
-                  {account.firstName}
-                </p>
-                <p className="text-[10px] text-[#6c7883] truncate">
-                  {account.position}
-                </p>
-              </div>
-            </button>
-          ))}
-        </div>
 
         {/* Footer */}
         <div className="mt-6 text-center text-xs text-[#4a5568]">

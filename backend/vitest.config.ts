@@ -29,8 +29,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@gov-platform/database': path.resolve(__dirname, './packages/database/src'),
-      '@gov-platform/types': path.resolve(__dirname, './packages/types/src')
+      '@cube-demper/database': path.resolve(__dirname, './packages/database/src'),
+      '@cube-demper/types': path.resolve(__dirname, './packages/types/src')
     }
   }
 });

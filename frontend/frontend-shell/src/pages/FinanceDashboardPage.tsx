@@ -58,7 +58,7 @@ export const FinanceDashboardPage: React.FC = () => {
         <MainLayout>
             <div className="h-full overflow-auto bg-[#0e1621]">
                 {/* Header */}
-                <div className="sticky top-0 z-10 bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-6 py-4">
+                <div className="sticky top-0 z-10 bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-4 md:px-6 py-4">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 flex items-center justify-center">
@@ -82,7 +82,7 @@ export const FinanceDashboardPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="max-w-4xl mx-auto p-6 space-y-6">
+                <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-6">
                     {/* Общие показатели */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                         <StatCard

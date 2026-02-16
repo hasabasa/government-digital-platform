@@ -3,7 +3,7 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import crypto from 'crypto';
 import { config } from '../config';
 import { logger } from '../utils/logger';
-import { File } from '@gov-platform/types';
+import { File } from '@cube-demper/types';
 
 export class StorageService {
   private s3Client: S3Client;

@@ -84,11 +84,6 @@ export const SidebarHeader: React.FC<SidebarHeaderProps> = ({
               <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
                 {user?.position || user?.email}
               </p>
-              {user?.iin && (
-                <p className="text-xs text-gray-400 dark:text-gray-500">
-                  ИИН: {user.iin}
-                </p>
-              )}
             </div>
           </button>
 

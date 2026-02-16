@@ -1,5 +1,5 @@
-import { DatabaseConnection } from '@gov-platform/database';
-import { Chat, Message } from '@gov-platform/types';
+import { DatabaseConnection } from '@cube-demper/database';
+import { Chat, Message } from '@cube-demper/types';
 import { config } from '../config';
 import { logger } from '../utils/logger';
 

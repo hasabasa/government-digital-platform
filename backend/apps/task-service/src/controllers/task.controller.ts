@@ -10,7 +10,7 @@ import {
   UpdateChecklistItemRequestSchema,
   TaskFiltersSchema,
   PaginationSchema
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 import { z } from 'zod';
 
 export class TaskController {

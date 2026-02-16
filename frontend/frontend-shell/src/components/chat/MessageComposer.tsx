@@ -1,71 +1,129 @@
-import React from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { clsx } from 'clsx';
-import { 
-  Send, 
-  Paperclip, 
-  Smile, 
-  Mic, 
+import {
+  Send,
+  Paperclip,
+  Mic,
   X,
   Image,
-  File as FileIcon
+  File as FileIcon,
+  Loader2,
 } from 'lucide-react';
-import { Button } from '../ui/Button';
 import { useChatStore } from '../../stores/chat.store';
+import { useWebSocket } from '../../providers/WebSocketProvider';
 import { apiService } from '../../services/api.service';
 import toast from 'react-hot-toast';
+import { VoiceRecorder } from './VoiceRecorder';
 
-interface MessageComposerProps {
-  className?: string;
+interface UploadingFile {
+  file: File;
+  progress: number;
+  status: 'pending' | 'uploading' | 'done' | 'error';
 }
 
-export const MessageComposer: React.FC<MessageComposerProps> = ({ className }) => {
+export const MessageComposer: React.FC<{ className?: string }> = ({ className }) => {
   const { activeChat } = useChatStore();
-  const [message, setMessage] = React.useState('');
-  const [isRecording, setIsRecording] = React.useState(false);
-  const [attachedFiles, setAttachedFiles] = React.useState<File[]>([]);
-  const [isSending, setIsSending] = React.useState(false);
-  const textareaRef = React.useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = React.useRef<HTMLInputElement>(null);
+  const { startTyping, stopTyping } = useWebSocket();
 
-  const adjustTextareaHeight = () => {
+  const [message, setMessage] = useState('');
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState<UploadingFile[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [showVoiceRecorder, setShowVoiceRecorder] = useState(false);
+
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+
+  // Auto-resize textarea
+  useEffect(() => {
     const textarea = textareaRef.current;
     if (textarea) {
       textarea.style.height = 'auto';
-      const scrollHeight = textarea.scrollHeight;
-      const maxHeight = 120; // Max 6 lines
-      textarea.style.height = `${Math.min(scrollHeight, maxHeight)}px`;
+      textarea.style.height = `${Math.min(textarea.scrollHeight, 120)}px`;
     }
-  };
-
-  React.useEffect(() => {
-    adjustTextareaHeight();
   }, [message]);
 
-  const handleSendMessage = async () => {
-    if (!activeChat || (!message.trim() && attachedFiles.length === 0) || isSending) {
-      return;
+  // Typing indicator
+  const handleTyping = useCallback(() => {
+    if (!activeChat) return;
+
+    startTyping(activeChat.id);
+
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
     }
+    typingTimeoutRef.current = setTimeout(() => {
+      stopTyping(activeChat.id);
+    }, 3000);
+  }, [activeChat, startTyping, stopTyping]);
+
+  const handleSendMessage = async () => {
+    if (!activeChat || (!message.trim() && attachedFiles.length === 0) || isSending) return;
 
     setIsSending(true);
 
-    try {
-      // Send files first if any
-      for (const file of attachedFiles) {
-        const uploadResult = await apiService.uploadFile(file);
-        const fileMessage = {
-          chatId: activeChat.id,
-          content: '',
-          type: file.type.startsWith('image/') ? 'image' : 'file',
-          fileUrl: uploadResult.data.url,
-          fileName: file.name,
-          fileSize: file.size,
-          fileMimeType: file.type,
-        };
+    // Stop typing
+    if (typingTimeoutRef.current) {
+      clearTimeout(typingTimeoutRef.current);
+    }
+    if (activeChat) stopTyping(activeChat.id);
 
-        await apiService.sendMessage(fileMessage);
+    try {
+      // Upload files first
+      if (attachedFiles.length > 0) {
+        const filesToUpload = attachedFiles.map((file) => ({
+          file,
+          progress: 0,
+          status: 'pending' as const,
+        }));
+        setUploadingFiles(filesToUpload);
+
+        for (let i = 0; i < attachedFiles.length; i++) {
+          const file = attachedFiles[i];
+
+          // Update status to uploading
+          setUploadingFiles((prev) =>
+            prev.map((f, idx) => (idx === i ? { ...f, status: 'uploading', progress: 30 } : f))
+          );
+
+          try {
+            const uploadResult = await apiService.uploadFile(file);
+            const fileData = uploadResult.data || uploadResult;
+            const fileId = fileData.id;
+
+            // Update progress
+            setUploadingFiles((prev) =>
+              prev.map((f, idx) => (idx === i ? { ...f, status: 'uploading', progress: 80 } : f))
+            );
+
+            // Determine message type
+            let type = 'file';
+            if (file.type.startsWith('image/')) type = 'image';
+            else if (file.type.startsWith('audio/')) type = 'audio';
+            else if (file.type.startsWith('video/')) type = 'video';
+
+            await apiService.sendMessage({
+              chatId: activeChat.id,
+              content: file.name,
+              type,
+              fileId,
+            });
+
+            // Mark as done
+            setUploadingFiles((prev) =>
+              prev.map((f, idx) => (idx === i ? { ...f, status: 'done', progress: 100 } : f))
+            );
+          } catch {
+            setUploadingFiles((prev) =>
+              prev.map((f, idx) => (idx === i ? { ...f, status: 'error' } : f))
+            );
+            toast.error(`Ошибка загрузки: ${file.name}`);
+          }
+        }
       }
 
-      // Send text message if any
+      // Send text message
       if (message.trim()) {
         await apiService.sendMessage({
           chatId: activeChat.id,
@@ -74,11 +132,11 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ className }) =
         });
       }
 
-      // Clear input
       setMessage('');
       setAttachedFiles([]);
+      setUploadingFiles([]);
     } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Ошибка отправки сообщения');
+      toast.error(error.response?.data?.error || 'Ошибка отправки');
     } finally {
       setIsSending(false);
     }
@@ -93,125 +151,135 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ className }) =
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
-    setAttachedFiles(prev => [...prev, ...files]);
+    // Max 10 files, 50MB each
+    const valid = files.filter((f) => f.size <= 50 * 1024 * 1024);
+    if (valid.length < files.length) {
+      toast.error('Максимальный размер файла: 50 МБ');
+    }
+    setAttachedFiles((prev) => [...prev, ...valid]);
     e.target.value = '';
   };
 
-  const removeAttachedFile = (index: number) => {
-    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  const removeFile = (index: number) => {
+    setAttachedFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const openFileDialog = () => {
-    fileInputRef.current?.click();
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} Б`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} КБ`;
+    return `${(bytes / 1024 / 1024).toFixed(1)} МБ`;
   };
 
-  const startRecording = () => {
-    setIsRecording(true);
-    // TODO: Implement voice recording
-  };
-
-  const stopRecording = () => {
-    setIsRecording(false);
-    // TODO: Stop voice recording and send
-  };
-
-  if (!activeChat) {
-    return null;
-  }
+  if (!activeChat) return null;
 
   const hasContent = message.trim() || attachedFiles.length > 0;
+  const isUploading = uploadingFiles.some((f) => f.status === 'uploading');
+
+  // Voice recorder mode
+  if (showVoiceRecorder) {
+    return (
+      <div className={clsx('', className)}>
+        <VoiceRecorder onClose={() => setShowVoiceRecorder(false)} />
+      </div>
+    );
+  }
 
   return (
-    <div className={clsx('composer', className)}>
+    <div className={clsx('space-y-0', className)}>
       {/* Attached files preview */}
       {attachedFiles.length > 0 && (
-        <div className="border-t border-gray-200 dark:border-gray-700 p-3">
+        <div className="pb-2">
           <div className="flex flex-wrap gap-2">
-            {attachedFiles.map((file, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-lg p-2 max-w-xs"
-              >
-                <div className="flex-shrink-0">
-                  {file.type.startsWith('image/') ? (
-                    <Image className="w-4 h-4 text-blue-500" />
-                  ) : (
-                    <FileIcon className="w-4 h-4 text-gray-500" />
-                  )}
-                </div>
-                <span className="text-sm truncate flex-1">
-                  {file.name}
-                </span>
-                <button
-                  onClick={() => removeAttachedFile(index)}
-                  className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+            {attachedFiles.map((file, index) => {
+              const uploading = uploadingFiles[index];
+
+              return (
+                <div
+                  key={index}
+                  className="relative flex items-center gap-2 bg-[#232e3c] rounded-lg px-3 py-2 max-w-[200px]"
                 >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            ))}
+                  {uploading && uploading.status === 'uploading' && (
+                    <div
+                      className="absolute bottom-0 left-0 h-0.5 bg-[#3a73b8] rounded-b-lg transition-all"
+                      style={{ width: `${uploading.progress}%` }}
+                    />
+                  )}
+
+                  <div className="flex-shrink-0">
+                    {file.type.startsWith('image/') ? (
+                      <Image className="w-4 h-4 text-blue-400" />
+                    ) : (
+                      <FileIcon className="w-4 h-4 text-[#6c7883]" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-white truncate">{file.name}</p>
+                    <p className="text-[10px] text-[#6c7883]">{formatFileSize(file.size)}</p>
+                  </div>
+                  {!uploading || uploading.status === 'pending' ? (
+                    <button
+                      onClick={() => removeFile(index)}
+                      className="flex-shrink-0 text-[#6c7883] hover:text-white"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  ) : uploading.status === 'uploading' ? (
+                    <Loader2 className="w-3.5 h-3.5 text-[#3a73b8] animate-spin flex-shrink-0" />
+                  ) : null}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {/* Main composer */}
-      <div className="flex items-end gap-3">
-        {/* Attachment button */}
-        <Button
-          variant="ghost"
-          size="sm"
-          onClick={openFileDialog}
-          className="flex-shrink-0"
+      {/* Composer row */}
+      <div className="flex items-end gap-2">
+        {/* Attach */}
+        <button
+          onClick={() => fileInputRef.current?.click()}
+          className="flex-shrink-0 p-2 text-[#6c7883] hover:text-white rounded-lg hover:bg-[#232e3c] transition-colors"
         >
           <Paperclip className="w-5 h-5" />
-        </Button>
+        </button>
 
-        {/* Message input */}
-        <div className="flex-1 relative">
+        {/* Textarea */}
+        <div className="flex-1">
           <textarea
             ref={textareaRef}
             value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder="Напишите сообщение..."
-            className="composer-input resize-none min-h-[40px] max-h-[120px]"
-            rows={1}
-          />
-          
-          {/* Emoji button */}
-          <button
-            className="absolute right-2 bottom-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
-            onClick={() => {
-              // TODO: Open emoji picker
-              toast('Эмодзи будут добавлены в следующих версиях');
+            onChange={(e) => {
+              setMessage(e.target.value);
+              handleTyping();
             }}
-          >
-            <Smile className="w-5 h-5" />
-          </button>
+            onKeyDown={handleKeyPress}
+            placeholder="Сообщение..."
+            rows={1}
+            className="w-full bg-[#0e1621] border border-[#232e3c] rounded-xl px-4 py-2.5 text-sm text-white placeholder:text-[#6c7883] focus:outline-none focus:border-[#3a73b8] resize-none min-h-[40px] max-h-[120px]"
+          />
         </div>
 
-        {/* Send/Voice button */}
+        {/* Send / Mic */}
         {hasContent ? (
-          <Button
-            variant="primary"
-            size="sm"
+          <button
             onClick={handleSendMessage}
-            loading={isSending}
-            className="flex-shrink-0 rounded-full w-10 h-10 p-0"
+            disabled={isSending || isUploading}
+            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full bg-[#3a73b8] text-white hover:bg-[#4a83c8] transition-colors disabled:opacity-50"
           >
-            <Send className="w-5 h-5" />
-          </Button>
+            {isSending || isUploading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
+          </button>
         ) : (
-          <Button
-            variant={isRecording ? 'danger' : 'ghost'}
-            size="sm"
-            onMouseDown={startRecording}
-            onMouseUp={stopRecording}
-            onMouseLeave={stopRecording}
-            className="flex-shrink-0 rounded-full w-10 h-10 p-0"
+          <button
+            onClick={() => setShowVoiceRecorder(true)}
+            className="flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-[#6c7883] hover:text-white hover:bg-[#232e3c] transition-colors"
+            title="Голосовое сообщение"
           >
             <Mic className="w-5 h-5" />
-          </Button>
+          </button>
         )}
       </div>
 
@@ -222,7 +290,7 @@ export const MessageComposer: React.FC<MessageComposerProps> = ({ className }) =
         multiple
         onChange={handleFileSelect}
         className="hidden"
-        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.txt,.zip,.rar"
+        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip,.rar,.7z"
       />
     </div>
   );

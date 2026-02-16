@@ -1,6 +1,6 @@
 import { v4 as uuidv4 } from 'uuid';
-import { DatabaseConnection } from '@gov-platform/database';
-import { users, sessions } from '@gov-platform/database';
+import { DatabaseConnection } from '@cube-demper/database';
+import { users, sessions } from '@cube-demper/database';
 import { eq, and } from 'drizzle-orm';
 import {
   LoginRequest,
@@ -8,7 +8,7 @@ import {
   RefreshTokenRequest,
   User,
   Session,
-} from '@gov-platform/types';
+} from '@cube-demper/types';
 import { JwtUtils, JwtPayload } from '../utils/jwt';
 import { CryptoUtils } from '../utils/crypto';
 import { logger } from '../utils/logger';
@@ -84,7 +84,7 @@ export class AuthService {
       }
 
       if (!user.passwordHash) {
-        throw new Error('This account uses ЭЦП authentication');
+        throw new Error('Invalid credentials');
       }
 
       if (user.status !== 'active') {
@@ -106,7 +106,7 @@ export class AuthService {
         })
         .where(eq(users.id, user.id));
 
-      // Create session (same as ЭЦП flow)
+      // Create session
       const sessionId = uuidv4();
       const jwtPayload: Omit<JwtPayload, 'type'> = {
         userId: user.id,

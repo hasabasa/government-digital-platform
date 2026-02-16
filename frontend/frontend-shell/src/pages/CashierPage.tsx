@@ -102,7 +102,7 @@ export const CashierPage: React.FC = () => {
         <MainLayout>
             <div className="h-full overflow-auto bg-[#0e1621]">
                 {/* Header */}
-                <div className="sticky top-0 z-10 bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-6 py-4">
+                <div className="sticky top-0 z-10 bg-[#17212b]/95 backdrop-blur-sm border-b border-[#232e3c] px-4 md:px-6 py-4">
                     <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-gradient-to-br from-green-400 to-emerald-600 flex items-center justify-center">
                             <Banknote className="w-5 h-5 text-white" />
@@ -114,7 +114,7 @@ export const CashierPage: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="max-w-2xl mx-auto p-6 space-y-6">
+                <div className="max-w-2xl mx-auto p-4 md:p-6 space-y-6">
                     {/* Тарифные карточки */}
                     <div className="space-y-3">
                         {tariffCards.map((tariff) => (
@@ -138,7 +138,7 @@ export const CashierPage: React.FC = () => {
                                         <button
                                             onClick={() => handleDecrement(tariff.key)}
                                             disabled={currentInput[tariff.key] === 0}
-                                            className="w-9 h-9 rounded-lg bg-[#17212b] border border-[#232e3c] flex items-center justify-center text-white disabled:opacity-30 hover:bg-[#232e3c] transition-colors active:scale-95"
+                                            className="w-11 h-11 rounded-lg bg-[#17212b] border border-[#232e3c] flex items-center justify-center text-white disabled:opacity-30 hover:bg-[#232e3c] transition-colors active:scale-95"
                                         >
                                             <Minus className="w-4 h-4" />
                                         </button>
@@ -149,7 +149,7 @@ export const CashierPage: React.FC = () => {
 
                                         <button
                                             onClick={() => handleIncrement(tariff.key)}
-                                            className={`w-9 h-9 rounded-lg bg-[#17212b] border ${tariff.borderColor} flex items-center justify-center text-white hover:bg-[#232e3c] transition-colors active:scale-95`}
+                                            className={`w-11 h-11 rounded-lg bg-[#17212b] border ${tariff.borderColor} flex items-center justify-center text-white hover:bg-[#232e3c] transition-colors active:scale-95`}
                                         >
                                             <Plus className="w-4 h-4" />
                                         </button>

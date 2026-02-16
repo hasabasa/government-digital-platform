@@ -134,6 +134,9 @@ export class APIGateway {
           '/api/v1/users',
           '/api/v1/chats',
           '/api/v1/files',
+          '/api/v1/tasks',
+          '/api/v1/calls',
+          '/api/v1/finance',
         ],
       });
     });
@@ -164,8 +167,26 @@ export class APIGateway {
       this.proxyMiddleware.createServiceProxy('file-service')
     );
 
+    // Task Service
+    this.app.use(
+      '/api/v1/tasks',
+      this.proxyMiddleware.createServiceProxy('task-service')
+    );
+
+    // Call Service
+    this.app.use(
+      '/api/v1/calls',
+      this.proxyMiddleware.createServiceProxy('call-service')
+    );
+
+    // Finance Service
+    this.app.use(
+      '/api/v1/finance',
+      this.proxyMiddleware.createServiceProxy('finance-service')
+    );
+
     logger.info('Service proxies configured', {
-      services: ['auth-service', 'user-service', 'chat-service', 'file-service'],
+      services: ['auth-service', 'user-service', 'chat-service', 'file-service', 'task-service', 'call-service', 'finance-service'],
     });
   }
 
@@ -189,15 +210,18 @@ export class APIGateway {
     // Simple API info endpoint
     this.app.get('/api', (req, res) => {
       res.json({
-        name: 'Government Platform API Gateway',
-        version: '0.1.0',
-        description: 'Unified API gateway for government digital platform services',
+        name: 'Cube Demper OS API Gateway',
+        version: '0.2.0',
+        description: 'Unified API gateway for Cube Demper OS platform services',
         documentation: `${req.protocol}://${req.get('host')}/api/docs`,
         services: {
           auth: `${req.protocol}://${req.get('host')}/api/v1/auth`,
           users: `${req.protocol}://${req.get('host')}/api/v1/users`,
           chats: `${req.protocol}://${req.get('host')}/api/v1/chats`,
           files: `${req.protocol}://${req.get('host')}/api/v1/files`,
+          tasks: `${req.protocol}://${req.get('host')}/api/v1/tasks`,
+          calls: `${req.protocol}://${req.get('host')}/api/v1/calls`,
+          finance: `${req.protocol}://${req.get('host')}/api/v1/finance`,
         },
         websocket: `${req.protocol.replace('http', 'ws')}://${req.get('host')}/socket.io`,
         support: {
@@ -217,6 +241,9 @@ export class APIGateway {
           'User Service - User management and profiles',
           'Chat Service - Real-time messaging',
           'File Service - File upload and management',
+          'Task Service - Task management and assignments',
+          'Call Service - Video/audio calls and Google Meet',
+          'Finance Service - Financial operations, tariffs and payroll',
         ],
       });
     });

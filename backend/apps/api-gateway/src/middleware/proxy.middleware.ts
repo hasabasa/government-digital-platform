@@ -172,7 +172,7 @@ export class ProxyMiddleware {
 
     res.json({
       success: true,
-      gateway: 'Government Platform API Gateway',
+      gateway: 'Cube Demper OS API Gateway',
       version: '0.1.0',
       services: availableServices,
       timestamp: new Date().toISOString(),
@@ -216,7 +216,7 @@ export class ProxyMiddleware {
     res.setHeader('X-Frame-Options', 'DENY');
     res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.setHeader('X-Gateway', 'gov-platform-api-gateway');
+    res.setHeader('X-Gateway', 'cube-demper-api-gateway');
     
     next();
   };

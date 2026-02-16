@@ -4,9 +4,9 @@ services:
   # PostgreSQL Database
   postgres:
     image: postgres:15-alpine
-    container_name: gov-postgres
+    container_name: cube-postgres
     environment:
-      POSTGRES_DB: gov_platform
+      POSTGRES_DB: cube_demper
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: password
       POSTGRES_INITDB_ARGS: "--encoding=UTF-8 --locale=C"
@@ -16,10 +16,10 @@ services:
     ports:
       - "5432:5432"
     networks:
-      - gov-network
+      - cube-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres -d gov_platform"]
+      test: ["CMD-SHELL", "pg_isready -U postgres -d cube_demper"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -27,14 +27,14 @@ services:
   # Redis Cache
   redis:
     image: redis:7-alpine
-    container_name: gov-redis
+    container_name: cube-redis
     command: redis-server --appendonly yes --requirepass redispassword
     volumes:
       - redis_data:/data
     ports:
       - "6379:6379"
     networks:
-      - gov-network
+      - cube-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
@@ -45,7 +45,7 @@ services:
   # MinIO S3-compatible storage
   minio:
     image: minio/minio:latest
-    container_name: gov-minio
+    container_name: cube-minio
     environment:
       MINIO_ROOT_USER: minioadmin
       MINIO_ROOT_PASSWORD: minioadmin123
@@ -58,7 +58,7 @@ services:
       - "9000:9000"
       - "9001:9001"
     networks:
-      - gov-network
+      - cube-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
@@ -69,7 +69,7 @@ services:
   # Elasticsearch for search
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.10.0
-    container_name: gov-elasticsearch
+    container_name: cube-elasticsearch
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
@@ -80,7 +80,7 @@ services:
       - "9200:9200"
       - "9300:9300"
     networks:
-      - gov-network
+      - cube-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
@@ -91,7 +91,7 @@ services:
   # RabbitMQ Message Broker
   rabbitmq:
     image: rabbitmq:3.12-management-alpine
-    container_name: gov-rabbitmq
+    container_name: cube-rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: rabbitmq
       RABBITMQ_DEFAULT_PASS: rabbitmq123
@@ -102,7 +102,7 @@ services:
       - "5672:5672"
       - "15672:15672"
     networks:
-      - gov-network
+      - cube-network
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
@@ -115,11 +115,11 @@ services:
     build:
       context: .
       dockerfile: apps/auth-service/Dockerfile
-    container_name: gov-auth-service
+    container_name: cube-auth-service
     environment:
       NODE_ENV: production
       PORT: 3001
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cube_demper
       REDIS_URL: redis://:redispassword@redis:6379
       JWT_ACCESS_SECRET: super-secret-access-key-change-in-production
       JWT_REFRESH_SECRET: super-secret-refresh-key-change-in-production
@@ -129,7 +129,7 @@ services:
     ports:
       - "3001:3001"
     networks:
-      - gov-network
+      - cube-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -147,11 +147,11 @@ services:
     build:
       context: .
       dockerfile: apps/user-service/Dockerfile
-    container_name: gov-user-service
+    container_name: cube-user-service
     environment:
       NODE_ENV: production
       PORT: 3002
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cube_demper
       REDIS_URL: redis://:redispassword@redis:6379
       AUTH_SERVICE_URL: http://auth-service:3001
       ELASTICSEARCH_URL: http://elasticsearch:9200
@@ -159,7 +159,7 @@ services:
     ports:
       - "3002:3002"
     networks:
-      - gov-network
+      - cube-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -181,11 +181,11 @@ services:
     build:
       context: .
       dockerfile: apps/chat-service/Dockerfile
-    container_name: gov-chat-service
+    container_name: cube-chat-service
     environment:
       NODE_ENV: production
       PORT: 3003
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cube_demper
       REDIS_URL: redis://:redispassword@redis:6379
       AUTH_SERVICE_URL: http://auth-service:3001
       E2E_ENCRYPTION_ENABLED: true
@@ -195,7 +195,7 @@ services:
     ports:
       - "3003:3003"
     networks:
-      - gov-network
+      - cube-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -217,24 +217,24 @@ services:
     build:
       context: .
       dockerfile: apps/file-service/Dockerfile
-    container_name: gov-file-service
+    container_name: cube-file-service
     environment:
       NODE_ENV: production
       PORT: 3004
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cube_demper
       REDIS_URL: redis://:redispassword@redis:6379
       AUTH_SERVICE_URL: http://auth-service:3001
       S3_ENDPOINT: http://minio:9000
       S3_ACCESS_KEY: minioadmin
       S3_SECRET_KEY: minioadmin123
-      S3_BUCKET: gov-platform-files
+      S3_BUCKET: cube-demper-files
       FILE_ENCRYPTION_ENABLED: true
       VIRUS_SCAN_ENABLED: false
       LOG_LEVEL: info
     ports:
       - "3004:3004"
     networks:
-      - gov-network
+      - cube-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -260,14 +260,14 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3005
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cube_demper
       REDIS_URL: redis://:redispassword@redis:6379
       AUTH_SERVICE_URL: http://auth-service:3001
       LOG_LEVEL: info
     ports:
       - "3005:3005"
     networks:
-      - gov-network
+      - cube-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -291,14 +291,14 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3006
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cube_demper
       REDIS_URL: redis://:redispassword@redis:6379
       AUTH_SERVICE_URL: http://auth-service:3001
       LOG_LEVEL: info
     ports:
       - "3006:3006"
     networks:
-      - gov-network
+      - cube-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -322,14 +322,14 @@ services:
     environment:
       NODE_ENV: production
       PORT: 3007
-      DATABASE_URL: postgresql://postgres:password@postgres:5432/gov_platform
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cube_demper
       REDIS_URL: redis://:redispassword@redis:6379
       AUTH_SERVICE_URL: http://auth-service:3001
       LOG_LEVEL: info
     ports:
       - "3007:3007"
     networks:
-      - gov-network
+      - cube-network
     depends_on:
       postgres:
         condition: service_healthy
@@ -365,7 +365,7 @@ services:
     ports:
       - "8080:8080"
     networks:
-      - gov-network
+      - cube-network
     depends_on:
       auth-service:
         condition: service_healthy
@@ -393,7 +393,7 @@ services:
   # Nginx Load Balancer
   nginx:
     image: nginx:alpine
-    container_name: gov-nginx
+    container_name: cube-nginx
     volumes:
       - ./infrastructure/docker/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
       - ./infrastructure/docker/nginx/conf.d:/etc/nginx/conf.d:ro
@@ -401,7 +401,7 @@ services:
       - "80:80"
       - "443:443"
     networks:
-      - gov-network
+      - cube-network
     depends_on:
       - auth-service
     restart: unless-stopped
@@ -424,7 +424,7 @@ volumes:
     driver: local
 
 networks:
-  gov-network:
+  cube-network:
     driver: bridge
     ipam:
       config:
