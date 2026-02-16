@@ -15,6 +15,7 @@ import OrdersPage from './pages/OrdersPage';
 import { CashierPage } from './pages/CashierPage';
 import { FinanceDashboardPage } from './pages/FinanceDashboardPage';
 import { TestDashboard } from './pages/TestDashboard';
+import CrmPage from './pages/CrmPage';
 import { WebSocketProvider } from './providers/WebSocketProvider';
 import './styles/globals.css';
 
@@ -219,6 +220,16 @@ function App() {
                 <ProtectedRoute>
                   <WebSocketProvider>
                     <FinanceDashboardPage />
+                  </WebSocketProvider>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/crm"
+              element={
+                <ProtectedRoute>
+                  <WebSocketProvider>
+                    <CrmPage />
                   </WebSocketProvider>
                 </ProtectedRoute>
               }

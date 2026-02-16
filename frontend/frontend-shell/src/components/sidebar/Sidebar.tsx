@@ -16,7 +16,9 @@ import {
   PanelLeftOpen,
   Users,
   UserPlus,
+  Target,
 } from 'lucide-react';
+import { useCrmStore } from '../../stores/crm.store';
 
 interface SidebarProps {
   className?: string;
@@ -34,12 +36,21 @@ export const Sidebar: React.FC<SidebarProps> = ({
   const { user, logout } = useAuthStore();
   const { shareholderTotals } = useFinanceStore();
   const { collapsed, toggle } = useSidebarStore();
+  const { hasCrmAccess, checkMyAccess } = useCrmStore();
 
   // On mobile always show expanded
   const isCollapsed = isMobile ? false : collapsed;
 
   // Role check: finance & cashier only for admin/manager
   const isFinanceAllowed = user?.role === 'admin' || user?.role === 'manager';
+
+  // CRM visibility: admin always, others only if crm_access is granted
+  const isCrmVisible = user?.role === 'admin' || hasCrmAccess;
+
+  // Check CRM access on mount
+  React.useEffect(() => {
+    if (user) checkMyAccess();
+  }, [user?.id]);
 
   const allNavigationItems = [
     { id: 'dashboard', label: 'Главная', path: '/', icon: Home },
@@ -50,10 +61,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'groups', label: 'Группы', path: '/groups', icon: Users },
     { id: 'cashier', label: 'Касса', path: '/cashier', icon: Banknote, requiresFinance: true },
     { id: 'finance', label: 'Финансы', path: '/finance', icon: BarChart3, requiresFinance: true },
-  ];
+    { id: 'crm', label: 'CRM', path: '/crm', icon: Target, requiresCrm: true },
+  ] as const;
 
   const navigationItems = allNavigationItems.filter(
-    (item) => !item.requiresFinance || isFinanceAllowed
+    (item) => {
+      if ('requiresFinance' in item && item.requiresFinance) return isFinanceAllowed;
+      if ('requiresCrm' in item && item.requiresCrm) return isCrmVisible;
+      return true;
+    }
   );
 
   const handleNavigate = (path: string) => {

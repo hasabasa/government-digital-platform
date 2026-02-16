@@ -8,6 +8,6 @@ export * from './bot';
 export * from './company';
 export * from './tasks';
 export * from './common';
-export * from './call';
 export * from './notification';
 export * from './webrtc';
+export * from './crm';

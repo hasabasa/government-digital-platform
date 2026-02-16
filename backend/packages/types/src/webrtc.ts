@@ -455,11 +455,11 @@ export const MediasoupConsumerOptionsSchema = z.object({
 
 export type MediasoupConsumerOptions = z.infer<typeof MediasoupConsumerOptionsSchema>;
 
-// WebSocket event schemas
-export const WebSocketEventSchema = z.object({
+// WebSocket event schemas for WebRTC calls
+export const WebRTCSocketEventSchema = z.object({
   type: z.enum([
     'call-created',
-    'call-updated', 
+    'call-updated',
     'call-ended',
     'participant-joined',
     'participant-left',
@@ -475,4 +475,4 @@ export const WebSocketEventSchema = z.object({
   timestamp: z.date(),
 });
 
-export type WebSocketEvent = z.infer<typeof WebSocketEventSchema>;
+export type WebRTCSocketEvent = z.infer<typeof WebRTCSocketEventSchema>;

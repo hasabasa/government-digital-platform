@@ -8,3 +8,4 @@ export * from './calls';
 export * from './notifications';
 export * from './tasks';
 export * from './finance';
+export * from './crm';

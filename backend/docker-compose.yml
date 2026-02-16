@@ -344,6 +344,37 @@ services:
       timeout: 10s
       retries: 3
 
+  # CRM Service
+  crm-service:
+    build:
+      context: .
+      dockerfile: apps/crm-service/Dockerfile
+    container_name: cube-crm-service
+    environment:
+      NODE_ENV: production
+      PORT: 3008
+      DATABASE_URL: postgresql://postgres:password@postgres:5432/cube_demper
+      REDIS_URL: redis://:redispassword@redis:6379
+      AUTH_SERVICE_URL: http://auth-service:3001
+      LOG_LEVEL: info
+    ports:
+      - "3008:3008"
+    networks:
+      - cube-network
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3008/api/v1/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
   # API Gateway
   api-gateway:
     build:
@@ -360,6 +391,7 @@ services:
       TASK_SERVICE_URL: http://task-service:3005
       CALL_SERVICE_URL: http://call-service:3006
       FINANCE_SERVICE_URL: http://finance-service:3007
+      CRM_SERVICE_URL: http://crm-service:3008
       ALLOWED_ORIGINS: http://localhost:3000,http://localhost:8080
       LOG_LEVEL: info
     ports:
@@ -380,6 +412,8 @@ services:
       call-service:
         condition: service_healthy
       finance-service:
+        condition: service_healthy
+      crm-service:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:

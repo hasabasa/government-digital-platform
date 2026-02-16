@@ -369,6 +369,98 @@ class ApiService {
     return response.data;
   }
 
+  // CRM endpoints
+  async getCrmLeads(filters?: Record<string, any>) {
+    const params = new URLSearchParams();
+    if (filters) {
+      Object.entries(filters).forEach(([key, value]) => {
+        if (value !== undefined && value !== '') params.append(key, String(value));
+      });
+    }
+    const response = await this.api.get(`/crm/leads?${params}`);
+    return response.data;
+  }
+
+  async getCrmLeadById(leadId: string) {
+    const response = await this.api.get(`/crm/leads/${leadId}`);
+    return response.data;
+  }
+
+  async createCrmLead(data: any) {
+    const response = await this.api.post('/crm/leads', data);
+    return response.data;
+  }
+
+  async updateCrmLead(leadId: string, data: any) {
+    const response = await this.api.put(`/crm/leads/${leadId}`, data);
+    return response.data;
+  }
+
+  async deleteCrmLead(leadId: string) {
+    const response = await this.api.delete(`/crm/leads/${leadId}`);
+    return response.data;
+  }
+
+  async moveCrmLeadStage(leadId: string, data: { toStage: string; comment?: string }) {
+    const response = await this.api.post(`/crm/leads/${leadId}/move`, data);
+    return response.data;
+  }
+
+  async getCrmLeadHistory(leadId: string) {
+    const response = await this.api.get(`/crm/leads/${leadId}/history`);
+    return response.data;
+  }
+
+  async getCrmDashboard() {
+    const response = await this.api.get('/crm/dashboard');
+    return response.data;
+  }
+
+  async getCrmManagerStats() {
+    const response = await this.api.get('/crm/dashboard/managers');
+    return response.data;
+  }
+
+  async getCrmSalesPlans() {
+    const response = await this.api.get('/crm/plans');
+    return response.data;
+  }
+
+  async createCrmSalesPlan(data: any) {
+    const response = await this.api.post('/crm/plans', data);
+    return response.data;
+  }
+
+  async updateCrmSalesPlan(planId: string, data: any) {
+    const response = await this.api.put(`/crm/plans/${planId}`, data);
+    return response.data;
+  }
+
+  async deleteCrmSalesPlan(planId: string) {
+    const response = await this.api.delete(`/crm/plans/${planId}`);
+    return response.data;
+  }
+
+  async getCrmAccessList() {
+    const response = await this.api.get('/crm/access');
+    return response.data;
+  }
+
+  async grantCrmAccess(userId: string) {
+    const response = await this.api.post('/crm/access', { userId });
+    return response.data;
+  }
+
+  async revokeCrmAccess(userId: string) {
+    const response = await this.api.delete(`/crm/access/${userId}`);
+    return response.data;
+  }
+
+  async checkCrmAccess() {
+    const response = await this.api.get('/crm/access/check');
+    return response.data;
+  }
+
   // Generic request method
   async request<T = any>(config: AxiosRequestConfig): Promise<AxiosResponse<T>> {
     return this.api.request(config);

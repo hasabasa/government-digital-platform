@@ -100,3 +100,94 @@ export interface Notification {
   relatedId?: string;
   createdAt: Date;
 }
+
+// === CRM Types ===
+
+export type FunnelStage = 'new' | 'contact' | 'negotiation' | 'proposal' | 'deal';
+export type TrafficChannel = 'website' | 'instagram' | 'telegram' | 'whatsapp' | 'facebook' | 'referral' | 'cold_call' | 'exhibition' | 'advertisement' | 'partner' | 'other';
+export type LeadResult = 'pending' | 'won' | 'lost' | 'deferred';
+export type SalesPlanPeriod = 'monthly' | 'quarterly';
+
+export interface CrmLead {
+  id: string;
+  firstName: string;
+  lastName?: string;
+  companyName?: string;
+  email?: string;
+  phone?: string;
+  trafficChannel: TrafficChannel;
+  stage: FunnelStage;
+  result: LeadResult;
+  assignedTo?: string;
+  dealAmount?: string;
+  dealCurrency?: string;
+  notes?: string;
+  tags?: string[];
+  lostReason?: string;
+  nextContactDate?: string;
+  isActive?: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrmLeadHistory {
+  id: string;
+  leadId: string;
+  changedBy: string;
+  fromStage?: FunnelStage;
+  toStage: FunnelStage;
+  comment?: string;
+  createdAt: string;
+}
+
+export interface CrmSalesPlan {
+  id: string;
+  managerId: string;
+  period: SalesPlanPeriod;
+  periodStart: string;
+  periodEnd: string;
+  targetAmount: string;
+  targetCount: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CrmAccessEntry {
+  id: string;
+  userId: string;
+  grantedBy: string;
+  isActive: boolean;
+  grantedAt: string;
+  revokedAt?: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+}
+
+export interface CrmManagerStats {
+  managerId: string;
+  managerName: string;
+  totalLeads: number;
+  wonCount: number;
+  lostCount: number;
+  pendingCount: number;
+  wonAmount: number;
+  targetAmount: number;
+  targetCount: number;
+  amountProgress: number;
+  countProgress: number;
+}
+
+export interface CrmDashboardData {
+  funnel: Array<{ stage: FunnelStage; count: number; totalAmount: number }>;
+  channels: Array<{ channel: TrafficChannel; count: number }>;
+  results: Array<{ result: LeadResult; count: number; totalAmount: number }>;
+  kpi: {
+    totalLeads: number;
+    wonDeals: number;
+    wonAmount: number;
+    lostDeals: number;
+    conversionRate: number;
+  };
+}

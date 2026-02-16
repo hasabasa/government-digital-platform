@@ -64,6 +64,14 @@ export const services: ServiceConfig[] = [
     healthCheck: '/api/v1/health',
     prefix: '/finance',
   },
+  {
+    name: 'crm-service',
+    url: process.env.CRM_SERVICE_URL || 'http://localhost:3008',
+    timeout: 10000,
+    retries: 3,
+    healthCheck: '/api/v1/health',
+    prefix: '/crm',
+  },
 ];
 
 export const config = {
